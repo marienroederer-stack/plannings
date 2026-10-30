@@ -42,12 +42,13 @@ header{background:var(--accent);color:var(--accent-ink);padding-top:env(safe-are
 header .wrap{padding-block:18px 16px;display:grid;gap:2px}
 header .club{font-family:var(--f-display);font-weight:600;font-size:14px;letter-spacing:.12em;text-transform:uppercase;opacity:.85}
 header h1{font-size:28px;line-height:1.1}
-.nom-bar{position:sticky;top:0;z-index:5;background:var(--surface);border-bottom:1px solid var(--line);box-shadow:0 4px 14px rgba(0,0,0,.05)}
-.nom-bar .wrap{padding-block:10px;display:grid;gap:4px}
-.nom-bar label{font-size:12px;font-weight:600;color:var(--muted);letter-spacing:.03em}
-.nom-bar input{width:100%;border:1.5px solid var(--line);border-radius:10px;padding:10px 12px;background:var(--bg);font-size:17px}
-.nom-bar input:focus{border-color:var(--accent)}
-.nom-bar.vide input{border-color:var(--accent);background:var(--accent-soft)}
+.saisie{grid-column:1 / -1;display:grid;gap:8px;padding-top:4px}
+.saisie label{font-size:12.5px;font-weight:600;color:var(--muted)}
+.saisie input{width:100%;border:1.5px solid var(--accent);border-radius:10px;padding:10px 12px;background:var(--surface);font-size:17px}
+.saisie .actions{display:flex;gap:8px}
+.saisie .actions .btn{flex:1}
+.btn.annuler{background:transparent;color:var(--muted);border:1px solid var(--line)}
+.role.ouvert{background:var(--accent-soft)}
 main{padding-block:16px 40px;display:grid;gap:14px}
 .intro{color:var(--muted);font-size:14px;margin:0}
 .jour{font-family:var(--f-display);font-weight:600;font-size:15px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin:8px 2px -4px}
@@ -77,10 +78,6 @@ main{padding-block:16px 40px;display:grid;gap:14px}
 </head>
 <body>
 <header><div class="wrap"><span class="club" id="club">Inscriptions</span><h1 id="titre">Officiels et bénévoles</h1></div></header>
-<div class="nom-bar" id="nomBar"><div class="wrap">
-  <label for="nom">Votre prénom et nom (retenu sur ce téléphone)</label>
-  <input id="nom" type="text" autocomplete="name" placeholder="ex. Julie Martin" maxlength="60">
-</div></div>
 <main class="wrap" id="main"><div class="etat"><h2>Chargement…</h2></div></main>
 <div class="toast" id="toast" hidden></div>
 <script>
@@ -92,7 +89,8 @@ const params = new URLSearchParams(location.hash.slice(1));
 // Lien court (#t=…) : adresse et clé publique de la base lues dans config.json ; lien long (#p=…&k=…&t=…) accepté aussi
 let REF = params.get("p") || "", KEY = params.get("k") || "", URL_BASE = "";
 const TOKEN = params.get("t") || "";
-let data = null, armed = null, toastT;
+let data = null, ouvert = null, toastT;
+const inscrits = new Set();   // noms inscrits depuis ce téléphone (mis en évidence)
 const store = { get(k){ try { return localStorage.getItem(k) || ""; } catch { return ""; } }, set(k, v){ try { localStorage.setItem(k, v); } catch {} } };
 
 function toast(msg, err){ const t = $("#toast"); t.textContent = msg; t.className = "toast" + (err ? " err" : ""); t.hidden = false; clearTimeout(toastT); toastT = setTimeout(() => t.hidden = true, 3500); }
@@ -120,15 +118,14 @@ async function charger(){
     data = r; rendre();
   } catch (e){ if (!data) etat("Connexion impossible", "Vérifiez votre connexion internet puis rechargez la page."); }
 }
-function etat(t, p){ $("#main").innerHTML = `<div class="etat"><h2>${h(t)}</h2><p>${h(p)}</p></div>`; $("#nomBar").hidden = true; }
+function etat(t, p){ $("#main").innerHTML = `<div class="etat"><h2>${h(t)}</h2><p>${h(p)}</p></div>`; }
 function rendre(){
-  $("#nomBar").hidden = false;
   $("#club").textContent = data.club || "Inscriptions";
   $("#titre").textContent = data.titre || "Officiels et bénévoles";
   document.title = `${data.titre || "Inscriptions"} - ${data.club || ""}`;
-  const moi = norm($("#nom").value);
+  const garde = ouvert ? ($("#saisieNom")?.value ?? null) : null;
   const cols = data.colonnes || [];
-  let html = `<p class="intro">Choisissez un rôle libre et appuyez sur <b>Je m'inscris</b>, puis confirmez. Une fois inscrit, seul le club peut modifier ou annuler : prévenez l'entraîneur en cas d'empêchement.</p>`;
+  let html = `<p class="intro">Appuyez sur <b>Je m'inscris</b> sur un rôle libre, puis indiquez votre prénom et nom. Vous pouvez prendre plusieurs rôles (par exemple à deux). Une fois inscrit, seul le club peut modifier ou annuler : prévenez sur le groupe WhatsApp en cas d'empêchement.</p>`;
   if (!data.matchs.length) html += `<div class="etat"><h2>Aucun match à venir</h2><p>Les prochains matchs à domicile apparaîtront ici.</p></div>`;
   let dernier = "";
   for (const m of data.matchs){
@@ -137,33 +134,39 @@ function rendre(){
     html += `<section class="carte"><div class="entete"><span class="heure">${h(heure(m.heure))}</span><div class="affiche"><b>${h(m.equipe)}${m.club_equipe ? " · " + h(m.club_equipe) : ""} reçoit ${h(m.adversaire || "?")}</b><span>${h(m.salle || "Salle à préciser")} · ${libres ? `${libres} rôle${libres > 1 ? "s" : ""} libre${libres > 1 ? "s" : ""}` : "complet"}</span></div></div>
       <div class="roles">${cols.map(c => {
         const v = (m.valeurs || {})[c.k];
-        if (v) return `<div class="role pris ${moi && norm(v).includes(moi) ? "moi" : ""}"><span class="lib">${h(c.l)}<small>${h(v)}</small></span><span></span></div>`;
-        const cle = m.id + "|" + c.k, ok = armed === cle;
-        return `<div class="role"><span class="lib">${h(c.l)}<small>${c.req ? "À pourvoir" : "Libre"}</small></span><button class="btn ${ok ? "confirmer" : ""}" data-m="${h(m.id)}" data-k="${h(c.k)}">${ok ? "Confirmer" : "Je m'inscris"}</button></div>`;
+        if (v) return `<div class="role pris ${inscrits.has(norm(v)) ? "moi" : ""}"><span class="lib">${h(c.l)}<small>${h(v)}</small></span><span></span></div>`;
+        const cle = m.id + "|" + c.k;
+        if (ouvert === cle) return `<form class="role ouvert" data-m="${h(m.id)}" data-k="${h(c.k)}"><span class="lib">${h(c.l)}<small>${h(jour(m.date))} à ${h(heure(m.heure))}</small></span><span></span>
+          <div class="saisie"><label for="saisieNom">Votre prénom et nom</label><input id="saisieNom" type="text" autocomplete="name" maxlength="60" placeholder="ex. Julie Martin" value="${h(garde ?? store.get("pb-nom"))}">
+          <div class="actions"><button type="button" class="btn annuler" data-annuler="1">Annuler</button><button type="submit" class="btn confirmer">Valider</button></div></div></form>`;
+        return `<div class="role"><span class="lib">${h(c.l)}<small>${c.req ? "À pourvoir" : "Libre"}</small></span><button type="button" class="btn" data-m="${h(m.id)}" data-k="${h(c.k)}">Je m'inscris</button></div>`;
       }).join("")}</div></section>`;
   }
   if (data.expire_le) html += `<p class="pied">Lien valable jusqu'au ${h(jour(String(data.expire_le).slice(0, 10)))}.</p>`;
   $("#main").innerHTML = html;
 }
-document.addEventListener("click", async e => {
+document.addEventListener("click", e => {
+  if (e.target.closest("[data-annuler]")){ ouvert = null; rendre(); return; }
   const b = e.target.closest("button[data-m]"); if (!b) return;
-  const nom = $("#nom").value.trim();
-  if (nom.length < 2){ $("#nomBar").classList.add("vide"); $("#nom").focus(); toast("Indiquez d'abord votre prénom et nom, en haut de la page.", true); return; }
-  const cle = b.dataset.m + "|" + b.dataset.k;
-  if (armed !== cle){ armed = cle; rendre(); return; }
-  b.disabled = true;
+  ouvert = b.dataset.m + "|" + b.dataset.k; rendre();
+  const inp = $("#saisieNom"); if (inp){ inp.focus(); inp.select(); inp.closest("form").scrollIntoView({ block:"center", behavior:"smooth" }); }
+});
+document.addEventListener("submit", async e => {
+  const f = e.target.closest("form[data-m]"); if (!f) return;
+  e.preventDefault();
+  const nom = $("#saisieNom").value.trim();
+  if (nom.length < 2){ $("#saisieNom").focus(); toast("Indiquez votre prénom et nom.", true); return; }
+  const btn = f.querySelector("button[type=submit]"); btn.disabled = true;
   try {
-    const r = await rpc("partage_ecrire", { p_token:TOKEN, p_match:b.dataset.m, p_champ:b.dataset.k, p_valeur:nom });
-    armed = null;
-    if (r.ok) toast("C'est noté, merci !");
+    const r = await rpc("partage_ecrire", { p_token:TOKEN, p_match:f.dataset.m, p_champ:f.dataset.k, p_valeur:nom });
+    ouvert = null;
+    if (r.ok){ store.set("pb-nom", nom); inscrits.add(norm(nom)); toast("C'est noté, merci !"); }
     else toast(r.raison === "deja_pris" ? "Quelqu'un vient de prendre ce rôle." : r.raison === "lien_invalide" ? "Ce lien n'est plus valable." : "Inscription refusée.", true);
-  } catch (err){ toast(err.message, true); }
+  } catch (err){ toast(err.message, true); btn.disabled = false; return; }
   await charger();
 });
-$("#nom").value = store.get("pb-nom");
-$("#nom").addEventListener("input", e => { store.set("pb-nom", e.target.value.trim()); $("#nomBar").classList.remove("vide"); if (data) rendre(); });
 document.addEventListener("visibilitychange", () => { if (!document.hidden) charger(); });
-setInterval(() => { if (!document.hidden && !armed) charger(); }, 30000);
+setInterval(() => { if (!document.hidden && !ouvert) charger(); }, 30000);
 charger();
 </script>
 </body>
