@@ -6,6 +6,15 @@
 <meta name="robots" content="noindex,nofollow">
 <meta name="referrer" content="no-referrer">
 <title>FR Blanzat Basket - inscriptions</title>
+<meta name="description" content="Arbitres, table de marque, buvette… Choisissez un créneau libre en un clic.">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="FR Blanzat Basket">
+<meta property="og:title" content="Inscriptions officiels & bénévoles">
+<meta property="og:description" content="Arbitres, table de marque, buvette… Choisissez un créneau libre en un clic.">
+<meta property="og:image" content="https://marienroederer-stack.github.io/plannings/apercu.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
 <style>
 @font-face{font-family:'Barlow';font-weight:400;font-display:swap;src:url('fonts/barlow-latin-400-normal.woff2') format('woff2')}
 @font-face{font-family:'Barlow';font-weight:500;font-display:swap;src:url('fonts/barlow-latin-500-normal.woff2') format('woff2')}
@@ -80,8 +89,9 @@ const $ = s => document.querySelector(s);
 const h = v => String(v ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const JOURS = ["dimanche","lundi","mardi","mercredi","jeudi","vendredi","samedi"], MOIS = ["janvier","février","mars","avril","mai","juin","juillet","août","septembre","octobre","novembre","décembre"];
 const params = new URLSearchParams(location.hash.slice(1));
-const REF = params.get("p") || "", KEY = params.get("k") || "", TOKEN = params.get("t") || "";
-const URL_BASE = /^[a-z0-9]{8,40}$/.test(REF) ? `https://${REF}.supabase.co` : "";
+// Lien court (#t=…) : adresse et clé publique de la base lues dans config.json ; lien long (#p=…&k=…&t=…) accepté aussi
+let REF = params.get("p") || "", KEY = params.get("k") || "", URL_BASE = "";
+const TOKEN = params.get("t") || "";
 let data = null, armed = null, toastT;
 const store = { get(k){ try { return localStorage.getItem(k) || ""; } catch { return ""; } }, set(k, v){ try { localStorage.setItem(k, v); } catch {} } };
 
@@ -97,7 +107,12 @@ async function rpc(fn, body){
   if (!r.ok) throw new Error("Le serveur n'a pas répondu (" + r.status + ").");
   return r.json();
 }
+async function config(){
+  if (!REF || !KEY){ try { const c = await (await fetch("config.json", { cache:"no-cache" })).json(); REF = REF || c.ref || ""; KEY = KEY || c.key || ""; } catch {} }
+  URL_BASE = /^[a-z0-9]{8,40}$/.test(REF) ? `https://${REF}.supabase.co` : "";
+}
 async function charger(){
+  if (!URL_BASE) await config();
   if (!URL_BASE || !KEY || !TOKEN){ etat("Lien incomplet", "Ouvrez le lien complet reçu sur WhatsApp, sans le couper."); return; }
   try {
     const r = await rpc("partage_lire", { p_token:TOKEN });

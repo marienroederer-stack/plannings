@@ -8,3 +8,11 @@ ouverte depuis un lien partagé sur WhatsApp par l'application « FR Blanzat Bas
 - On ne peut s'inscrire que dans une case vide ; les numéros de licence et les codes de match ne sont jamais affichés.
 
 Polices Barlow et Barlow Condensed sous licence SIL Open Font License (`fonts/OFL.txt`).
+
+## Configuration
+
+`config.json` contient l'adresse du projet Supabase (`ref`, la partie avant `.supabase.co`) et sa **clé publique**
+(`sb_publishable_…`, faite pour être publique). Une fois rempli, l'application génère des liens courts
+(`…/plannings/#t=…`). Ne jamais y mettre la clé secrète (`sb_secret_…`).
+
+`apercu.png` (1200 × 630) est l'image affichée par WhatsApp sous forme d'aperçu : remplaçable par une image du club.
