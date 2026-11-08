@@ -52,6 +52,14 @@ header h1{font-size:28px;line-height:1.1}
 main{padding-block:16px 40px;display:grid;gap:14px}
 .intro{color:var(--muted);font-size:14px;margin:0}
 .jour{font-family:var(--f-display);font-weight:600;font-size:15px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin:8px 2px -4px}
+.jour-arb{display:grid;gap:8px;margin:10px 0 -2px;padding:10px 12px;border-radius:12px;background:var(--surface);border:1px dashed var(--line)}
+.jour-arb .haut{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.jour-arb .haut .jour{margin:0;flex:1;min-width:140px}
+.btn.indispo{background:transparent;color:var(--bad);border:1.5px solid var(--bad);padding:7px 11px;font-size:13.5px}
+.indispos{font-size:13.5px;color:var(--muted)}
+.indispos b{color:var(--fg);font-weight:600}
+.indispos .moi{color:var(--bad)}
+.jour-arb form{display:grid;gap:8px}
 .carte{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:14px;display:grid;gap:12px}
 .entete{display:grid;grid-template-columns:auto minmax(0,1fr);gap:12px;align-items:center}
 .heure{font-family:var(--f-display);font-weight:700;font-size:28px;line-height:1;font-variant-numeric:tabular-nums}
@@ -119,17 +127,26 @@ async function charger(){
   } catch (e){ if (!data) etat("Connexion impossible", "Vérifiez votre connexion internet puis rechargez la page."); }
 }
 function etat(t, p){ $("#main").innerHTML = `<div class="etat"><h2>${h(t)}</h2><p>${h(p)}</p></div>`; }
+const indisposMoi = new Set();   // noms déclarés indisponibles depuis ce téléphone
+function jourArbitrage(d){
+  const noms = (data.indispos || {})[d] || [], cle = "indispo|" + d;
+  const liste = noms.length ? `<div class="indispos">Indisponibles : ${noms.map(n => `<b class="${indisposMoi.has(norm(n)) ? "moi" : ""}">${h(n)}</b>`).join(", ")}</div>` : "";
+  if (ouvert === cle) return `<div class="jour-arb"><div class="haut"><div class="jour">${h(jour(d))}</div></div>${liste}
+    <form data-indispo="${h(d)}"><div class="saisie" style="padding:0"><label for="saisieNom">Votre prénom et nom : indisponible le ${h(jour(d))}</label><input id="saisieNom" type="text" autocomplete="name" maxlength="60" placeholder="ex. Léo Martin" value="${h(store.get("pb-nom"))}">
+    <div class="actions"><button type="button" class="btn annuler" data-annuler="1">Annuler</button><button type="submit" class="btn" style="background:var(--bad);color:#fff">Je suis indisponible</button></div></div></form></div>`;
+  return `<div class="jour-arb"><div class="haut"><div class="jour">${h(jour(d))}</div><button type="button" class="btn indispo" data-indispo="${h(d)}">Je suis indisponible ce jour</button></div>${liste}</div>`;
+}
 function rendre(){
   $("#club").textContent = data.club || "Inscriptions";
   $("#titre").textContent = data.titre || "Officiels et bénévoles";
   document.title = `${data.titre || "Inscriptions"} - ${data.club || ""}`;
   const garde = ouvert ? ($("#saisieNom")?.value ?? null) : null;
   const cols = data.colonnes || [];
-  let html = `<p class="intro">Appuyez sur <b>Je m'inscris</b> sur un rôle libre, puis indiquez votre prénom et nom. Vous pouvez prendre plusieurs rôles (par exemple à deux). Une fois inscrit, seul le club peut modifier ou annuler : prévenez sur le groupe WhatsApp en cas d'empêchement.</p>`;
+  let html = data.arbitrage ? `<p class="intro">Inscrivez-vous comme arbitre sur un match libre avec <b>Je m'inscris</b>. Si vous ne pouvez pas arbitrer un jour, appuyez sur <b>Je suis indisponible ce jour</b> : votre nom s'ajoute à la liste du jour. En cas d'empêchement après inscription, prévenez sur le groupe WhatsApp.</p>` : `<p class="intro">Appuyez sur <b>Je m'inscris</b> sur un rôle libre, puis indiquez votre prénom et nom. Vous pouvez prendre plusieurs rôles (par exemple à deux). Une fois inscrit, seul le club peut modifier ou annuler : prévenez sur le groupe WhatsApp en cas d'empêchement.</p>`;
   if (!data.matchs.length) html += `<div class="etat"><h2>Aucun match à venir</h2><p>Les prochains matchs à domicile apparaîtront ici.</p></div>`;
   let dernier = "";
   for (const m of data.matchs){
-    if (m.date !== dernier){ dernier = m.date; html += `<div class="jour">${h(jour(m.date))}</div>`; }
+    if (m.date !== dernier){ dernier = m.date; html += data.arbitrage ? jourArbitrage(m.date) : `<div class="jour">${h(jour(m.date))}</div>`; }
     const libres = cols.filter(c => !(m.valeurs || {})[c.k]).length;
     html += `<section class="carte"><div class="entete"><span class="heure">${h(heure(m.heure))}</span><div class="affiche"><b>${h(m.equipe)}${m.club_equipe ? " · " + h(m.club_equipe) : ""} reçoit ${h(m.adversaire || "?")}</b><span>${h(m.salle || "Salle à préciser")} · ${libres ? `${libres} rôle${libres > 1 ? "s" : ""} libre${libres > 1 ? "s" : ""}` : "complet"}</span></div></div>
       <div class="roles">${cols.map(c => {
@@ -147,11 +164,26 @@ function rendre(){
 }
 document.addEventListener("click", e => {
   if (e.target.closest("[data-annuler]")){ ouvert = null; rendre(); return; }
-  const b = e.target.closest("button[data-m]"); if (!b) return;
-  ouvert = b.dataset.m + "|" + b.dataset.k; rendre();
+  const di = e.target.closest("button[data-indispo]");
+  const b = e.target.closest("button[data-m]"); if (!b && !di) return;
+  ouvert = di ? "indispo|" + di.dataset.indispo : b.dataset.m + "|" + b.dataset.k; rendre();
   const inp = $("#saisieNom"); if (inp){ inp.focus(); inp.select(); inp.closest("form").scrollIntoView({ block:"center", behavior:"smooth" }); }
 });
 document.addEventListener("submit", async e => {
+  const fi = e.target.closest("form[data-indispo]");
+  if (fi){
+    e.preventDefault();
+    const nom = $("#saisieNom").value.trim();
+    if (nom.length < 2){ $("#saisieNom").focus(); toast("Indiquez votre prénom et nom.", true); return; }
+    fi.querySelector("button[type=submit]").disabled = true;
+    try {
+      const r = await rpc("partage_indispo", { p_token:TOKEN, p_date:fi.dataset.indispo, p_nom:nom });
+      ouvert = null;
+      if (r.ok){ store.set("pb-nom", nom); indisposMoi.add(norm(nom)); toast("C'est noté : indisponible ce jour-là."); }
+      else toast(r.raison === "lien_invalide" ? "Ce lien n'est plus valable." : "Enregistrement refusé.", true);
+    } catch (err){ toast(err.message, true); }
+    await charger(); return;
+  }
   const f = e.target.closest("form[data-m]"); if (!f) return;
   e.preventDefault();
   const nom = $("#saisieNom").value.trim();
