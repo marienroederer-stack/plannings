@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<html lang="fr"><head><meta charset="utf-8"><meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data: blob: https://*.supabase.co; connect-src 'self' https://*.supabase.co https://marienroederer-stack.github.io; manifest-src 'self'; worker-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>FR Blanzat Basket - gestion des matchs</title>
 <link rel="manifest" href="manifest.webmanifest">
 <meta name="theme-color" content="#d4561c">
@@ -1666,7 +1666,8 @@ async function saveFile(filename, data){
   } catch (e){ toast(e.message || "Le fichier n'a pas pu être enregistré."); }
 }
 function csvExport(){
-  const esc = v => { v = String(v ?? ""); return /[";\n]/.test(v) ? `"${v.replace(/"/g,'""')}"` : v; };
+  // une valeur commençant par = + - @ serait exécutée comme formule par Excel : on la neutralise
+  const esc = v => { v = String(v ?? ""); if (/^[=+\-@\t\r]/.test(v)) v = "'" + v; return /[";\n]/.test(v) ? `"${v.replace(/"/g,'""')}"` : v; };
   const cols = [...colsOff(), ...colsDep()];
   const head = ["date","heure","equipe","lieu","adversaire","salle","competition","journee","statut","score_nous","score_adversaire",...cols.map(c => c.l),"notes"];
   const lines = sortMatches([...S.matchs.entries()]).map(([, m]) => [m.date, m.heure, nomEquipe(m), m.domicile ? "D" : "E", advNom(m), salleNom(m), m.competition, m.journee, STATUTS[m.statut||"prevu"]?.[0], m.scoreNous, m.scoreEux, ...cols.map(c => m[c.k]), m.notes].map(esc).join(";"));
@@ -1917,7 +1918,7 @@ window.addEventListener("hashchange", render);
    L'application PC passe par Python (window.pywebview.api) ; dans un navigateur, cet objet offre les mêmes
    fonctions (mêmes réponses { ok, … }) en appelant Supabase directement. */
 const WEB = location.protocol === "https:" || /[?&]web=1\b/.test(location.search);
-const VERSION_WEB = "1.15.1";
+const VERSION_WEB = "1.15.2";
 function creerApiWeb(){
   const ls = { get(k){ try { return localStorage.getItem("fb:" + k); } catch { return null; } },
                set(k, v){ try { v == null ? localStorage.removeItem("fb:" + k) : localStorage.setItem("fb:" + k, v); } catch {} } };

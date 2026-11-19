@@ -1,7 +1,7 @@
 /* Service worker de la version web : l'application s'ouvre même sans réseau.
    Page et configuration : réseau d'abord (mises à jour immédiates), copie en cache si hors connexion.
    Polices et icônes : cache d'abord. Les données (Supabase) ne passent jamais par ce cache. */
-const CACHE = "frb-app-1.15.1";
+const CACHE = "frb-app-1.15.2";
 const COQUILLE = ["./", "index.html", "manifest.webmanifest", "icon-192.png", "icon-512.png", "icon-maskable-512.png", "logo-club.png",
   "fonts/barlow-latin-400-normal.woff2", "fonts/barlow-latin-500-normal.woff2", "fonts/barlow-latin-600-normal.woff2",
   "fonts/barlow-condensed-latin-500-normal.woff2", "fonts/barlow-condensed-latin-600-normal.woff2", "fonts/barlow-condensed-latin-700-normal.woff2"];
