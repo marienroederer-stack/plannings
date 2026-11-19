@@ -978,7 +978,7 @@ function cleBtn(v){
   return `<button type="button" class="cle-btn" data-cle="${h(r[0])}" title="Copier la clé de validation de ${h(licLabel(r[1]))}" aria-label="Copier la clé de validation">${ICONE_CLE}</button>`;
 }
 /* Colonnes où l'on copie le n° de licence (délégué de club, délégué fair-play… réglable dans Réglages) */
-const estLicCol = c => c?.lic ?? /delegue/.test(norm(c?.l));
+const estLicCol = c => c?.lic ?? (["respSalle", "respFairPlay"].includes(c?.k) || /delegue|responsable|fair.?play/.test(norm(c?.l)));
 function licBtn(v){
   const r = licDe(v); if (!r || !r[1]?.licence) return "";
   return `<button type="button" class="cle-btn lic-btn" data-copielic="${h(r[0])}" title="Copier le n° de licence ${h(r[1].licence)} (${h(licLabel(r[1]).replace(/\s+–\s+\S+$/, ""))})" aria-label="Copier le n° de licence">N°</button>`;
@@ -1917,7 +1917,7 @@ window.addEventListener("hashchange", render);
    L'application PC passe par Python (window.pywebview.api) ; dans un navigateur, cet objet offre les mêmes
    fonctions (mêmes réponses { ok, … }) en appelant Supabase directement. */
 const WEB = location.protocol === "https:" || /[?&]web=1\b/.test(location.search);
-const VERSION_WEB = "1.15.0";
+const VERSION_WEB = "1.15.1";
 function creerApiWeb(){
   const ls = { get(k){ try { return localStorage.getItem("fb:" + k); } catch { return null; } },
                set(k, v){ try { v == null ? localStorage.removeItem("fb:" + k) : localStorage.setItem("fb:" + k, v); } catch {} } };
