@@ -1,0 +1,2066 @@
+<!doctype html>
+<html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>FR Blanzat Basket - gestion des matchs</title>
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#d4561c">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<style>
+@font-face{font-family:'Barlow';font-style:normal;font-weight:400;font-display:swap;src:url('fonts/barlow-latin-400-normal.woff2') format('woff2')}
+@font-face{font-family:'Barlow';font-style:normal;font-weight:500;font-display:swap;src:url('fonts/barlow-latin-500-normal.woff2') format('woff2')}
+@font-face{font-family:'Barlow';font-style:normal;font-weight:600;font-display:swap;src:url('fonts/barlow-latin-600-normal.woff2') format('woff2')}
+@font-face{font-family:'Barlow Condensed';font-style:normal;font-weight:500;font-display:swap;src:url('fonts/barlow-condensed-latin-500-normal.woff2') format('woff2')}
+@font-face{font-family:'Barlow Condensed';font-style:normal;font-weight:600;font-display:swap;src:url('fonts/barlow-condensed-latin-600-normal.woff2') format('woff2')}
+@font-face{font-family:'Barlow Condensed';font-style:normal;font-weight:700;font-display:swap;src:url('fonts/barlow-condensed-latin-700-normal.woff2') format('woff2')}
+body{margin:0;font-family:var(--f-body)}
+[hidden]{display:none!important}
+img{max-width:100%}
+/* (polices locales ci-dessus) */
+/* Layout : en-tête de club, onglets façon feuille de match, listes groupées par week-end avec horaires en chiffres de tableau d'affichage */
+:root{
+  --bg:#f3f5f8; --surface:#ffffff; --surface-2:#eef1f5; --line:#d9dee6; --fg:#141a24; --muted:#5a6476;
+  --accent:#d4561c; --accent-ink:#ffffff; --accent-soft:#fbe7dc;
+  --dom:#17734a; --dom-soft:#dff1e7; --ext:#2f55a4; --ext-soft:#e2e9f8;
+  --warn:#9a6200; --warn-soft:#fbefd4; --bad:#b3261e; --bad-soft:#f9e1df;
+  --f-display:"Barlow Condensed","Arial Narrow",system-ui,sans-serif;
+  --f-body:"Barlow",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --r:10px;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#0e1218; --surface:#161b24; --surface-2:#1d2430; --line:#2b3342; --fg:#e7eaf0; --muted:#97a1b3;
+  --accent-soft:#3a2418; --dom:#4fc68a; --dom-soft:#16301f; --ext:#7ea2f0; --ext-soft:#1a2440;
+  --warn:#e3a93c; --warn-soft:#33270f; --bad:#f08077; --bad-soft:#3a1714; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0e1218; --surface:#161b24; --surface-2:#1d2430; --line:#2b3342; --fg:#e7eaf0; --muted:#97a1b3;
+  --accent-soft:#3a2418; --dom:#4fc68a; --dom-soft:#16301f; --ext:#7ea2f0; --ext-soft:#1a2440;
+  --warn:#e3a93c; --warn-soft:#33270f; --bad:#f08077; --bad-soft:#3a1714; color-scheme:dark}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--fg);font-family:var(--f-body);font-size:15px;line-height:1.45}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:10;background:var(--surface)}
+.wrap{padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));max-width:1180px;margin:0 auto}
+button,input,select,textarea{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+h1,h2,h3{font-family:var(--f-display);font-weight:700;letter-spacing:.01em;text-wrap:balance;margin:0}
+.num{font-variant-numeric:tabular-nums}
+.muted{color:var(--muted)}
+.small{font-size:13px}
+.eyebrow{font-family:var(--f-display);font-weight:600;font-size:13px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
+
+/* En-tête */
+header.top{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var(--surface);border-bottom:1px solid var(--line)}
+.brand{display:flex;align-items:center;gap:12px;padding-block:12px 8px}
+.brand h1{font-size:24px;line-height:1.05}
+.brand .season{font-size:13px;color:var(--muted)}
+.brand .grow{flex:1;min-width:0}
+.ro-pill{font-size:12px;padding:3px 9px;border-radius:99px;background:var(--surface-2);color:var(--muted);white-space:nowrap}
+nav.tabs{display:flex;gap:2px;overflow-x:auto;scrollbar-width:none;margin-bottom:-1px}
+nav.tabs::-webkit-scrollbar{display:none}
+nav.tabs a{font-family:var(--f-display);font-weight:600;font-size:16px;letter-spacing:.02em;text-decoration:none;color:var(--muted);padding:8px 12px 10px;border-bottom:3px solid transparent;white-space:nowrap}
+nav.tabs a[aria-current="page"]{color:var(--fg);border-bottom-color:var(--accent)}
+nav.tabs a:hover{color:var(--fg)}
+main{padding-block:18px 60px;display:grid;gap:18px;grid-template-columns:minmax(0,1fr)}
+main > *{min-width:0}
+
+/* Contrôles */
+.btn{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line);background:var(--surface);border-radius:8px;padding:7px 12px;cursor:pointer;font-weight:500;white-space:nowrap}
+.btn:hover{border-color:var(--muted)}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.btn.primary:hover{filter:brightness(1.06)}
+.btn.danger{color:var(--bad);border-color:var(--bad)}
+.btn.ghost{border-color:transparent;background:transparent}
+.btn.sm{padding:4px 9px;font-size:13px}
+.btn:disabled{opacity:.5;cursor:default}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:8px;overflow:hidden;background:var(--surface)}
+.seg button{border:0;background:transparent;padding:7px 11px;cursor:pointer;font-weight:500;color:var(--muted)}
+.seg button[aria-pressed="true"]{background:var(--fg);color:var(--bg)}
+.field{display:grid;gap:4px;min-width:0}
+.field>span{font-size:12px;font-weight:600;color:var(--muted);letter-spacing:.03em}
+input[type=text],input[type=password],input[type=date],input[type=time],input[type=number],input[type=search],select,textarea{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:7px 9px;width:100%;min-width:0}
+textarea{resize:vertical;min-height:60px}
+.toolbar{display:flex;flex-wrap:wrap;gap:10px;align-items:end}
+.toolbar .field{width:auto}
+.toolbar .grow{flex:1 1 180px}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:16px}
+.row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+.check{display:flex;gap:8px;align-items:flex-start;font-size:13px}
+.check input{margin-top:3px;flex:none}
+.spacer{flex:1}
+
+/* Badges */
+.badge{display:inline-flex;align-items:center;gap:4px;font-family:var(--f-display);font-weight:600;font-size:12.5px;letter-spacing:.06em;text-transform:uppercase;padding:2px 8px;border-radius:5px;white-space:nowrap}
+.b-dom{background:var(--dom-soft);color:var(--dom)}
+.b-ext{background:var(--ext-soft);color:var(--ext)}
+.b-warn{background:var(--warn-soft);color:var(--warn)}
+.b-bad{background:var(--bad-soft);color:var(--bad)}
+.b-neutral{background:var(--surface-2);color:var(--muted)}
+.chip{display:inline-flex;align-items:center;gap:6px;font-weight:600;font-size:13.5px;white-space:nowrap}
+.chip i{width:10px;height:10px;border-radius:3px;background:var(--c,var(--muted));flex:none}
+
+/* Logos */
+.logo{flex:none;border-radius:7px;overflow:hidden;display:grid;place-items:center;background:var(--surface-2)}
+.logo.img{background:#fff;padding:2px;border:1px solid var(--line)}
+.logo img{width:100%;height:100%;object-fit:contain;transform:translate(var(--lx,0%),var(--ly,0%)) scale(var(--lz,1));transform-origin:center}
+.logo.img.sansfond{background:transparent;border-color:transparent}
+.logo.img.noir{background:#111;border-color:#111}
+.cadre-edit{display:grid;grid-template-columns:auto minmax(0,1fr);gap:18px;align-items:center}
+.cadre-edit input[type=range]{width:100%}
+@media (max-width:520px){.cadre-edit{grid-template-columns:1fr}}
+.logo b{font-family:var(--f-display);font-weight:700;color:#fff;letter-spacing:.02em}
+
+/* Liste des matchs */
+.group{display:grid;gap:8px}
+.group-head{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;padding:4px 2px}
+.group-head h2{font-size:22px}
+.group-head .count{font-size:13px;color:var(--muted)}
+.day-head{font-family:var(--f-display);font-weight:600;font-size:15px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);padding:6px 2px 0}
+.match{display:grid;grid-template-columns:86px minmax(0,1.1fr) minmax(0,2fr) minmax(0,1.1fr) auto;gap:14px;align-items:center;background:var(--surface);border:1px solid var(--line);border-left:4px solid var(--side,var(--line));border-radius:var(--r);padding:10px 14px;cursor:pointer;text-align:left;width:100%}
+.match:hover{border-color:var(--muted);border-left-color:var(--side,var(--muted))}
+.match.dom{--side:var(--dom)} .match.ext{--side:var(--ext)}
+.match.off{opacity:.62}
+.time{font-family:var(--f-display);font-weight:700;font-size:26px;line-height:1;font-variant-numeric:tabular-nums}
+.time small{display:block;font-size:12px;font-weight:600;color:var(--muted);letter-spacing:.06em;margin-top:3px}
+.team{display:grid;gap:2px;min-width:0}
+.team .comp{font-size:12.5px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.affiche{display:grid;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);align-items:center;gap:10px;min-width:0}
+.side{display:flex;align-items:center;gap:8px;min-width:0}
+.side.home{justify-content:flex-end;text-align:right}
+.side .nm{font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
+.side.us .nm{color:var(--fg)}
+.side.them .nm{color:var(--muted);font-weight:500}
+.vs{font-family:var(--f-display);font-weight:700;font-size:15px;color:var(--muted);min-width:34px;text-align:center;font-variant-numeric:tabular-nums}
+.vs.score{font-size:19px;color:var(--fg)}
+.place{font-size:13px;min-width:0}
+.place .s{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.flags{display:flex;gap:6px;justify-content:flex-end;flex-wrap:wrap;align-items:center}
+.dots{display:inline-flex;gap:3px}
+.dots i{width:7px;height:7px;border-radius:50%;background:var(--line)}
+.dots i.on{background:var(--dom)}
+@media (max-width:860px){
+  .match{grid-template-columns:58px minmax(0,1fr);gap:6px 12px;padding:10px 12px}
+  .match .time{grid-row:span 3;align-self:start;padding-top:2px}
+  .match .affiche,.match .place,.match .flags{grid-column:2}
+  .flags{justify-content:flex-start}
+  .time{font-size:22px}
+}
+@media (max-width:480px){
+  .affiche{grid-template-columns:1fr;gap:4px}
+  .side.home{justify-content:flex-start;text-align:left}
+  .vs{text-align:left}
+}
+
+/* Calendrier */
+.cal-nav{display:flex;align-items:center;gap:8px}
+.cal-nav h2{font-size:22px;min-width:180px;text-transform:capitalize}
+.cal-scroll{overflow-x:auto}
+.cal{display:grid;grid-template-columns:repeat(7,minmax(118px,1fr));gap:1px;background:var(--line);border:1px solid var(--line);border-radius:var(--r);overflow:hidden;min-width:840px}
+.cal .dh{background:var(--surface-2);font-family:var(--f-display);font-weight:600;font-size:13px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);padding:6px 8px}
+.cal .cell{background:var(--surface);min-height:104px;padding:6px;display:grid;align-content:start;gap:3px}
+.cal .cell.out{background:var(--surface-2)}
+.cal .cell.today .d{background:var(--accent);color:var(--accent-ink);border-radius:5px;padding:0 5px}
+.cal .d{font-family:var(--f-display);font-weight:600;font-size:14px;justify-self:start}
+.cal .ev{font-size:12px;line-height:1.25;border-radius:5px;padding:3px 5px;cursor:pointer;border:0;text-align:left;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;width:100%}
+.cal .ev.dom{background:var(--dom-soft);color:var(--dom)} .cal .ev.ext{background:var(--ext-soft);color:var(--ext)}
+.cal .ev b{font-variant-numeric:tabular-nums}
+
+/* Tableaux */
+.tbl-wrap{overflow-x:auto;border:1px solid var(--line);border-radius:var(--r);background:var(--surface)}
+table{border-collapse:collapse;width:100%;font-size:14px}
+th{font-family:var(--f-display);font-weight:600;font-size:13px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);text-align:left;padding:9px 10px;border-bottom:1px solid var(--line);background:var(--surface-2);white-space:nowrap}
+td{padding:7px 10px;border-bottom:1px solid var(--line);vertical-align:middle}
+tr:last-child td{border-bottom:0}
+td input[type=text],td input[type=password],td input[type=time]{padding:5px 7px;min-width:104px}
+th{white-space:normal}
+th:first-child,th:nth-child(2){white-space:nowrap}
+td.miss input,input.miss{border-color:var(--warn);background:var(--warn-soft)}
+.pile{display:grid;gap:4px}
+/* Impression (version web) */
+#printZone{display:none}
+@media print{
+  @page{size:A4 landscape;margin:10mm}
+  body.impression > *:not(#printZone){display:none!important}
+  body.impression{background:#fff}
+  body.impression #printZone{display:block;color:#141a24;font-family:var(--f-body);font-size:10pt}
+  .pz-page{page-break-after:always}
+  .pz-page header{display:flex;gap:12px;align-items:center;margin-bottom:8px}
+  .pz-page header img{width:60px;height:60px;object-fit:contain}
+  .pz-page header small{color:#d4561c;font-family:var(--f-display);font-weight:600;letter-spacing:.1em}
+  .pz-page h1{font-family:var(--f-display);font-size:20pt;margin:0}
+  .pz-page header p{margin:0;color:#5a6476}
+  .pz-page table{width:100%;border-collapse:collapse;font-size:9.5pt}
+  .pz-page th{background:#141a24;color:#fff;text-align:left;padding:5px;font-family:var(--f-display)}
+  .pz-page td{padding:5px;border-bottom:1px solid #ccd;vertical-align:top}
+  .pz-page tbody tr:nth-child(odd) td{background:#eef1f5}
+  .pz-h{font-family:var(--f-display);font-weight:700;font-size:13pt}
+  .pz-m{color:#5a6476}.pz-a{color:#b45a00}
+  .pz-page footer{margin-top:8px;color:#5a6476;font-size:8pt}
+}
+.etat-off{color:var(--bad);font-weight:600}
+.conflit-btn{border-color:var(--warn);color:var(--warn);background:var(--warn-soft)}
+.conflit{display:grid;gap:6px;padding:10px 12px;border:1px solid var(--line);border-radius:10px}
+.vs-vals{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.vs-vals > div{display:grid;gap:2px;background:var(--surface-2);border-radius:8px;padding:6px 8px;min-width:0;overflow-wrap:anywhere}
+tr.indispo-row td{background:var(--bad-soft);color:var(--bad);font-size:12.5px;padding:5px 10px}
+.indispo-nom{display:inline-flex;align-items:center;gap:2px;margin-right:6px;font-weight:600}
+.indispo-nom .x{border:0;background:transparent;color:var(--bad);cursor:pointer;font-size:14px;line-height:1;padding:0 3px;border-radius:4px}
+.indispo-nom .x:hover{background:rgba(0,0,0,.08)}
+.avec-cle{display:flex;gap:3px;align-items:center;min-width:0}
+.avec-cle > input{flex:1;min-width:0}
+.cle-btn{flex:none;width:26px;height:26px;display:grid;place-items:center;border:1px solid var(--line);border-radius:7px;background:var(--surface);color:var(--accent);cursor:pointer;padding:0}
+.cle-btn:hover{border-color:var(--accent);background:var(--accent-soft)}
+.lic-btn{font-family:var(--f-display);font-weight:700;font-size:11.5px;color:var(--ext)}
+.lic-btn:hover{border-color:var(--ext);background:var(--ext-soft)}
+.partage-btn{margin-top:6px;padding:3px 9px;font-size:12.5px}
+.partage-btn.fait{color:var(--dom);border-color:var(--dom)}
+main.large{max-width:none}
+.tbl-fit table{table-layout:fixed;width:100%;min-width:880px}
+.tbl-fit th{white-space:normal;font-size:11.5px;letter-spacing:.05em;padding:8px 6px;vertical-align:bottom;line-height:1.25}
+.tbl-fit td{padding:6px;overflow:hidden}
+.tbl-fit td input[type=text],.tbl-fit td input[type=password],.tbl-fit td input[type=time]{min-width:0;width:100%;padding:4px 6px;font-size:13px;text-overflow:ellipsis}
+.tbl-fit .quand{font-size:13px;line-height:1.3}
+.tbl-fit .quand .small{font-size:11.5px;overflow:hidden;text-overflow:ellipsis;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
+.tbl-fit .match-c .chip{white-space:normal;font-size:13px}
+.tbl-fit .match-c .small{font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+td .rd{white-space:nowrap}
+tr.sep td{background:var(--surface-2);font-family:var(--f-display);font-weight:600;letter-spacing:.05em;text-transform:uppercase;font-size:13px;color:var(--muted);padding:6px 10px}
+
+/* Salles */
+.tl{display:grid;gap:10px}
+.tl-row{display:grid;grid-template-columns:150px minmax(0,1fr);gap:10px;align-items:center}
+.tl-track{position:relative;height:46px;background:var(--surface-2);border-radius:8px;overflow:hidden}
+.tl-hours{position:relative;height:18px;margin-left:160px;font-size:11px;color:var(--muted)}
+.tl-hours span{position:absolute;transform:translateX(-50%);font-variant-numeric:tabular-nums}
+.tl-block{position:absolute;top:4px;bottom:4px;border-radius:6px;background:var(--dom-soft);border:1px solid var(--dom);color:var(--dom);font-size:11.5px;line-height:1.15;padding:3px 6px;overflow:hidden;cursor:pointer;text-align:left}
+.tl-block.conflict{background:var(--bad-soft);border-color:var(--bad);color:var(--bad)}
+.tl-block.half{bottom:50%;} .tl-block.half2{top:50%}
+.tl-grid{position:absolute;top:0;bottom:0;width:1px;background:var(--line)}
+@media (max-width:640px){.tl-row{grid-template-columns:1fr}.tl-hours{margin-left:0}}
+
+/* Cartes bibliothèque */
+.grid-cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:10px}
+.card{display:flex;align-items:center;gap:12px;background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:10px 12px;cursor:pointer;text-align:left;width:100%}
+.card:hover{border-color:var(--muted)}
+.card .t{min-width:0}
+.card .t b{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+
+/* États */
+.empty{border:1.5px dashed var(--line);border-radius:var(--r);padding:28px 20px;text-align:center;display:grid;gap:10px;justify-items:center;background:var(--surface)}
+.empty h2{font-size:24px}
+.empty p{max-width:52ch;margin:0;color:var(--muted)}
+.steps{display:grid;gap:8px;text-align:left;max-width:520px;margin:4px 0;padding-left:20px}
+.banner{display:flex;gap:10px;align-items:center;flex-wrap:wrap;background:var(--warn-soft);color:var(--warn);border-radius:var(--r);padding:10px 14px;font-weight:500}
+.banner .btn{color:var(--fg)}
+.stat-line{display:flex;gap:18px;flex-wrap:wrap}
+.stat-line div{display:grid}
+.stat-line b{font-family:var(--f-display);font-size:26px;line-height:1;font-variant-numeric:tabular-nums}
+.stat-line span{font-size:12.5px;color:var(--muted)}
+
+/* Dialogue */
+dialog{border:1px solid var(--line);border-radius:14px;padding:0;background:var(--surface);color:var(--fg);width:min(720px,calc(100vw - 24px));max-height:calc(100dvh - 24px)}
+dialog::backdrop{background:rgba(10,14,20,.5)}
+.dlg{display:grid;grid-template-rows:auto minmax(0,1fr) auto;max-height:calc(100dvh - 26px)}
+.dlg-h{display:flex;align-items:center;gap:10px;padding:14px 18px;border-bottom:1px solid var(--line)}
+.dlg-h h2{font-size:22px;flex:1}
+.dlg-b{overflow-y:auto;padding:16px 18px;display:grid;gap:16px}
+.dlg-f{display:flex;gap:8px;flex-wrap:wrap;padding:12px 18px;border-top:1px solid var(--line)}
+fieldset{border:0;padding:0;margin:0;display:grid;gap:10px}
+legend{font-family:var(--f-display);font-weight:700;font-size:16px;letter-spacing:.04em;text-transform:uppercase;margin-bottom:8px;color:var(--muted)}
+.fgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px}
+.ac-box{position:fixed;z-index:100;background:var(--surface);border:1px solid var(--line);border-radius:10px;box-shadow:0 10px 30px rgba(0,0,0,.18);padding:4px;max-height:260px;overflow-y:auto}
+.ac-it{padding:6px 9px;border-radius:7px;cursor:pointer;font-size:14px}
+.ac-it:hover,.ac-it.on{background:var(--accent-soft)}
+.ac-foot{padding:5px 9px 3px;border-top:1px solid var(--line);margin-top:3px}
+.lock{font-size:12.5px;color:var(--warn);background:var(--warn-soft);padding:6px 10px;border-radius:8px}
+.ffbb-info{font-size:12.5px;color:var(--muted);background:var(--surface-2);padding:6px 10px;border-radius:8px}
+.tag-ffbb{display:inline-block;font-family:var(--f-display);font-weight:700;font-size:10.5px;letter-spacing:.06em;color:var(--ext);background:var(--ext-soft);border-radius:4px;padding:0 4px;margin-left:4px;vertical-align:1px}
+
+.toast{position:fixed;left:50%;bottom:calc(18px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--fg);color:var(--bg);padding:10px 16px;border-radius:10px;font-weight:500;z-index:50;max-width:calc(100vw - 32px);box-shadow:0 8px 30px rgba(0,0,0,.25)}
+canvas.preview{max-width:100%;height:auto;border:1px solid var(--line);border-radius:var(--r);background:var(--surface)}
+.two{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:16px}
+.two>*{min-width:0}
+pre.code{background:var(--surface-2);border-radius:8px;padding:10px 12px;overflow-x:auto;font-size:13px}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+/* Téléphone : chaque match du tableau des officiels / déplacements devient une carte */
+@media (max-width:760px){
+  .tbl-fit{border:0;background:transparent;overflow:visible}
+  .tbl-fit table{display:block;min-width:0;table-layout:auto}
+  .tbl-fit colgroup,.tbl-fit thead{display:none}
+  .tbl-fit tbody{display:grid;gap:10px}
+  .tbl-fit tr{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px 10px;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:10px 12px}
+  .tbl-fit tr.sep,.tbl-fit tr.indispo-row{display:block;border:0;padding:0;background:transparent}
+  .tbl-fit tr.sep td{background:transparent;padding:8px 2px 0;font-size:14px}
+  .tbl-fit tr.indispo-row td{border-radius:10px;padding:7px 10px}
+  .tbl-fit td{display:block;border:0;padding:0;overflow:visible}
+  .tbl-fit td.quand{grid-column:1;font-size:15px}
+  .tbl-fit td.match-c{grid-column:2}
+  .tbl-fit td[data-label]::before{content:attr(data-label);display:block;font-family:var(--f-display);font-weight:600;font-size:11.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin-bottom:3px}
+  .tbl-fit td input[type=text],.tbl-fit td input[type=password],.tbl-fit td input[type=time]{font-size:16px;padding:8px 9px}
+  .cle-btn{width:34px;height:34px}
+  .brand h1{font-size:20px}
+  #syncInfo{font-size:11.5px;text-align:right}
+  .brand .suffixe{display:none}
+}
+@media (max-width:420px){ .tbl-fit tr{grid-template-columns:minmax(0,1fr)} .tbl-fit td.match-c{grid-column:1} }
+</style>
+
+</head><body>
+<header class="top">
+  <div class="wrap">
+    <div class="brand">
+      <div id="brandLogo"></div>
+      <div class="grow">
+        <h1 id="brandName">FR Blanzat Basket - gestion des matchs</h1>
+        <div class="season num" id="season"></div>
+      </div>
+      <span class="small muted num" id="syncInfo"></span>
+      <span class="ro-pill" id="roPill" hidden>Consultation</span>
+      <button class="btn sm" data-act="compte" id="btnCompte" hidden>Compte</button>
+    </div>
+    <nav class="tabs" id="tabs">
+      <a href="#planning">Planning</a>
+      <a href="#equipes">Équipes</a>
+      <a href="#salles">Salles</a>
+      <a href="#officiels">Officiels</a>
+      <a href="#transport">Déplacements</a>
+      <a href="#clubs">Club &amp; logos</a>
+      <a href="#donnees">Import / export</a>
+      <a href="#licencies" id="tabLic">Licenciés</a>
+      <a href="#reglages">Réglages</a>
+    </nav>
+  </div>
+</header>
+<main class="wrap" id="main"><div class="empty"><h2>Chargement du planning…</h2></div></main>
+<dialog id="dlg"></dialog>
+<div class="toast" id="toast" hidden></div>
+
+<script>
+"use strict";
+/* ============ Utilitaires ============ */
+const $ = (s, r = document) => r.querySelector(s);
+const h = (v) => String(v ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const pad = n => String(n).padStart(2, "0");
+const JOURS = ["dimanche","lundi","mardi","mercredi","jeudi","vendredi","samedi"];
+const JOURS_C = ["dim.","lun.","mar.","mer.","jeu.","ven.","sam."];
+const MOIS = ["janvier","février","mars","avril","mai","juin","juillet","août","septembre","octobre","novembre","décembre"];
+const parseD = s => { const [y,m,d] = String(s||"").split("-").map(Number); return y ? new Date(y, m-1, d) : null; };
+const fmtD = d => `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+const addDays = (d, n) => { const x = new Date(d); x.setDate(x.getDate()+n); return x; };
+const today = () => fmtD(new Date());
+const toMin = t => { const m = /^(\d{1,2})[:hH](\d{2})/.exec(t||""); return m ? (+m[1])*60 + (+m[2]) : null; };
+const fmtH = t => { const m = toMin(t); return m == null ? "—" : `${Math.floor(m/60)}h${pad(m%60)}`; };
+function weekendKey(ds){ // samedi de la semaine (lun→dim)
+  const d = parseD(ds); if(!d) return "0000-00-00"; const wd = d.getDay();
+  const mon = addDays(d, wd === 0 ? -6 : 1 - wd); return fmtD(addDays(mon, 5));
+}
+function weekendLabel(k){
+  const sa = parseD(k), di = addDays(sa, 1);
+  return sa.getMonth() === di.getMonth() ? `Week-end des ${er(sa.getDate())} et ${di.getDate()} ${MOIS[di.getMonth()]}` : `Week-end du ${sa.getDate()} ${MOIS[sa.getMonth()]} au ${er(di.getDate())} ${MOIS[di.getMonth()]}`;
+}
+const cap = s => s.charAt(0).toUpperCase() + s.slice(1);
+const er = n => n === 1 ? "1er" : String(n);
+const dayLabel = ds => { const d = parseD(ds); return d ? `${JOURS[d.getDay()]} ${er(d.getDate())} ${MOIS[d.getMonth()]}` : "Date à fixer"; };
+function season(){ const d = new Date(), y = d.getMonth() >= 7 ? d.getFullYear() : d.getFullYear()-1; return `Saison ${y}-${y+1}`; }
+function hashColor(s){ let x = 0; for (const c of String(s)) x = (x*31 + c.charCodeAt(0)) >>> 0; return `hsl(${x % 360} 45% 40%)`; }
+function initials(s){ const w = String(s||"?").replace(/[^\p{L}\p{N} ]/gu," ").split(/\s+/).filter(w => w.length > 2 || /\d/.test(w)); return (w.length ? w.slice(0,2).map(x => x[0]) : [String(s||"?")[0]]).join("").toUpperCase(); }
+const norm = s => String(s||"").normalize("NFD").replace(/[̀-ͯ]/g,"").toLowerCase().replace(/[^a-z0-9]+/g," ").trim();
+const uid = p => p + "-" + Math.random().toString(36).slice(2,8) + Date.now().toString(36).slice(-4);
+let toastT; function toast(msg){ const t = $("#toast"); t.textContent = msg; t.hidden = false; clearTimeout(toastT); toastT = setTimeout(() => t.hidden = true, 3200); }
+const LS = { get(k, d){ try { const v = localStorage.getItem("pb:"+k); return v == null ? d : JSON.parse(v); } catch { return d; } }, set(k, v){ try { localStorage.setItem("pb:"+k, JSON.stringify(v)); } catch {} } };
+
+/* ============ État ============ */
+const S = { equipes:new Map(), clubs:new Map(), salles:new Map(), matchs:new Map(), codes:new Map(), licencies:new Map(), indispos:new Map(), reglages:{}, ready:{}, demo:false };
+let isAdmin = true, niveau = "administrateur";   // administrateur | utilisateur | lecteur
+const ROUTES_ADMIN = ["clubs","donnees","licencies","reglages"];
+const LIB_NIVEAU = { administrateur:"Administrateur", utilisateur:"Utilisateur", lecteur:"Consultation" };
+function appliquerRole(role){
+  niveau = role === "administrateur" || role === "editeur" ? "administrateur" : role === "utilisateur" ? "utilisateur" : "lecteur";
+  isAdmin = niveau === "administrateur"; canWrite = niveau !== "lecteur";
+}
+let api = null, CFG = {}, logoBase = "", canWrite = true, dbState = "loading", session = null, lastSync = "", syncedAt = null, syncBusy = false;
+const F = Object.assign({ equipe:"", lieu:"tous", periode:"avenir", q:"", mode:"weekend", mois:today().slice(0,7), salleJour:"" }, LS.get("filtres", {}));
+const saveF = () => LS.set("filtres", { equipe:F.equipe, lieu:F.lieu, periode:F.periode, mode:F.mode });
+const ROUTES = ["planning","equipes","salles","officiels","transport","clubs","donnees","licencies","reglages"];
+const route = () => { const r = location.hash.slice(1); return ROUTES.includes(r) && (isAdmin || !ROUTES_ADMIN.includes(r)) ? r : "planning"; };
+const DEF_OFF = [{k:"arbitre1",l:"Arbitre 1",req:true},{k:"arbitre2",l:"Arbitre 2"},{k:"marqueur",l:"Marqueur",req:true},{k:"chrono",l:"Chronométreur",req:true},{k:"op24",l:"Aide-marqueur"},{k:"respSalle",l:"Responsable de salle",req:true},{k:"respFairPlay",l:"Responsable fair-play"}];
+const DEF_DEP = [{k:"rdvHeure",l:"Heure de RDV",req:true,type:"time",fixe:true},{k:"rdvLieu",l:"Lieu de RDV"},{k:"chauffeurs",l:"Chauffeurs / parents",req:true},{k:"accompagnateur",l:"Accompagnateur"}];
+/* Colonnes « sous la précédente » : réglage explicite, sinon regroupement par défaut (arbitres, marqueurs, rôles en double) */
+function avecPiles(cols){
+  if (cols.some(c => c.stack !== undefined)) return cols;
+  return cols.map((c, i) => { const p = cols[i-1]; if (!p) return { ...c };
+    const auto = (c.k === "arbitre2" && p.k === "arbitre1") || (c.k === "op24" && p.k === "marqueur") || norm(c.l) === norm(p.l);
+    return auto ? { ...c, stack:true } : { ...c }; });
+}
+const colsOff = () => avecPiles(Array.isArray(S.reglages.colsOfficiels) && S.reglages.colsOfficiels.length ? S.reglages.colsOfficiels : DEF_OFF);
+const colsDep = () => Array.isArray(S.reglages.colsDeplacements) && S.reglages.colsDeplacements.length ? S.reglages.colsDeplacements : DEF_DEP;
+const offReq = () => colsOff().filter(c => c.req).map(c => c.k);
+const filled = v => String(v ?? "").trim() !== "";
+const FFBB_FIELDS = ["date","heure","domicile","equipeId","adversaireClubId","adversaireNom","salleId","salleNom","competition","journee","scoreNous","scoreEux","statut"];
+const FFBB_GROUPES = [["date",["date"],"Date"],["heure",["heure"],"Heure"],["domicile",["domicile"],"Lieu"],["equipeId",["equipeId"],"Équipe"],["adversaire",["adversaireClubId","adversaireNom"],"Adversaire"],["salle",["salleId","salleNom"],"Salle"],["competition",["competition"],"Compétition"],["journee",["journee"],"Journée"],["score",["scoreNous","scoreEux"],"Score"],["statut",["statut"],"Statut"]];
+const sv = v => String(v ?? "");
+function fmtFfbb(g, src){
+  switch (g){
+    case "date": return src.date ? dayLabel(src.date) : "—";
+    case "heure": return fmtH(src.heure);
+    case "domicile": return src.domicile ? "Domicile" : "Extérieur";
+    case "equipeId": return equipe(src.equipeId)?.nom || "—";
+    case "adversaire": return club(src.adversaireClubId)?.nom || src.adversaireNom || "—";
+    case "salle": return salle(src.salleId)?.nom || src.salleNom || "—";
+    case "score": return sv(src.scoreNous) !== "" ? `${src.scoreNous}–${src.scoreEux}` : "—";
+    case "statut": return STATUTS[src.statut || "prevu"]?.[0] || "—";
+    default: return sv(src[g]) || "—";
+  }
+}
+/* Écarts entre la valeur affichée et la dernière valeur officielle FFBB */
+function ecarts(m){
+  if (!m?.ffbb) return [];
+  const cle = (o, idf, nf) => sv(o[idf]) || norm(o[nf]);
+  return FFBB_GROUPES.filter(([g, fs]) => g === "adversaire" ? cle(m, "adversaireClubId", "adversaireNom") !== cle(m.ffbb, "adversaireClubId", "adversaireNom")
+    : g === "salle" ? cle(m, "salleId", "salleNom") !== cle(m.ffbb, "salleId", "salleNom")
+    : fs.some(f => sv(m[f]) !== sv(m.ffbb[f])))
+    .map(([g, fs, l]) => ({ g, fs, l, nous:fmtFfbb(g, m), ffbb:fmtFfbb(g, m.ffbb), fige:(m.figes || []).includes(g) }));
+}
+const STATUTS = { prevu:["Prévu",""], reporte:["Reporté","b-warn"], annule:["Annulé","b-bad"], joue:["Joué","b-neutral"], forfait:["Forfait","b-bad"] };
+
+/* ============ Accès aux données ============ */
+const logoURL = id => /^(https?:|data:)/.test(id) ? id : logoBase + encodeURIComponent(id);
+const equipe = id => S.equipes.get(id);
+const club = id => S.clubs.get(id);
+const salle = id => S.salles.get(id);
+const clubDe = e => e?.clubId ? (club(e.clubId)?.nom || e.clubNom || "") : "";
+const nomEquipe = m => { const e = equipe(m.equipeId); return (e?.nom || m.equipeNom || "Équipe ?") + (e?.clubId ? " · " + clubDe(e) : ""); };
+const isVisible = eid => equipe(eid)?.visible !== false;
+const visibleM = m => isVisible(m.equipeId);
+const usNom = m => { const e = equipe(m.equipeId); return e?.clubId ? clubDe(e) : notreNom(); };
+const usLogoM = (m, s) => { const e = equipe(m.equipeId); return e?.clubId ? logoHTML(club(e.clubId) || { nom:clubDe(e) }, s, clubDe(e)) : usLogo(s); };
+function ctcClubs(){
+  const l = Array.isArray(S.reglages.ffbbClubs) ? S.reglages.ffbbClubs : [];
+  if (l.length) return l;
+  const p = S.reglages.ffbbId || CFG.ffbbClubId; return p ? [{ ffbbId:String(p), nom:S.reglages.nom || "", principal:true }] : [];
+}
+const advBrut = m => club(m.adversaireClubId)?.nom || m.adversaireNom || "";
+/* Match « exempt » : la FFBB n'envoie pas d'adversaire (ou un adversaire nommé EXEMPT) — rien à jouer ni à organiser */
+const isExempt = m => { const a = norm(advBrut(m)); return a === "exempt" || a === "exempte" || (m.source === "ffbb" && !a); };
+const advNom = m => isExempt(m) ? "Exempté" : (advBrut(m) || "Adversaire à définir");
+const salleNom = m => salle(m.salleId)?.nom || m.salleNom || "";
+const notreNom = () => S.reglages.nom || "Notre club";
+const dureeOf = m => +(equipe(m.equipeId)?.duree || S.reglages.dureeMatch || 105);
+const isOff = m => m.statut === "annule" || m.statut === "reporte" || isExempt(m);
+function sortedEquipes(){ return [...S.equipes.entries()].sort((a,b) => (a[1].ordre ?? 999) - (b[1].ordre ?? 999) || String(a[1].nom).localeCompare(String(b[1].nom), "fr", {numeric:true})); }
+function sortMatches(arr){ return arr.sort((a,b) => (a[1].date||"9").localeCompare(b[1].date||"9") || (a[1].heure||"99").localeCompare(b[1].heure||"99") || nomEquipe(a[1]).localeCompare(nomEquipe(b[1]), "fr", {numeric:true})); }
+function logoHTML(entity, size = 32, label){
+  const name = label || entity?.nom || "?";
+  if (entity?.logo){ const c = entity.logoCadre || {}; return `<span class="logo img ${c.fond === "transparent" ? "sansfond" : c.fond === "noir" ? "noir" : ""}" style="width:${size}px;height:${size}px;--lz:${+c.zoom || 1};--lx:${+c.x || 0}%;--ly:${+c.y || 0}%"><img src="${h(logoURL(entity.logo))}" alt="" loading="lazy" onerror="this.replaceWith(Object.assign(document.createElement('b'),{textContent:'${h(initials(name))}'}));this.parentNode&&(this.parentNode.style.background='${hashColor(name)}')"></span>`; }
+  if (entity?.demoColor) return `<span class="logo" style="width:${size}px;height:${size}px;background:${entity.demoColor};border-color:transparent"><b style="font-size:${Math.round(size*.38)}px">${h(initials(name))}</b></span>`;
+  return `<span class="logo" style="width:${size}px;height:${size}px;background:${hashColor(name)};border-color:transparent"><b style="font-size:${Math.round(size*.38)}px">${h(initials(name))}</b></span>`;
+}
+const usLogo = (s=32) => logoHTML({ nom:notreNom(), logo:S.reglages.logo, logoCadre:S.reglages.logoCadre, demoColor:S.demo ? "var(--accent)" : null }, s);
+const advLogo = (m, s=32) => logoHTML(club(m.adversaireClubId) || { nom:advNom(m) }, s, advNom(m));
+
+/* Conflits de salle */
+function conflicts(){
+  const out = new Set(), by = new Map();
+  for (const [id, m] of S.matchs){
+    if (!m.domicile || isOff(m) || !m.date || toMin(m.heure) == null || !visibleM(m)) continue;
+    const sk = m.salleId || norm(m.salleNom); if (!sk) continue; const k = m.date + "|" + sk;
+    if (!by.has(k)) by.set(k, []); by.get(k).push([id, m]);
+  }
+  for (const list of by.values()){
+    for (let i = 0; i < list.length; i++) for (let j = i+1; j < list.length; j++){
+      const a = list[i][1], b = list[j][1], as = toMin(a.heure), bs = toMin(b.heure);
+      if (as < bs + dureeOf(b) && bs < as + dureeOf(a)) { out.add(list[i][0]); out.add(list[j][0]); }
+    }
+  }
+  return out;
+}
+
+/* Écritures : mise à jour locale immédiate, puis envoi à la base */
+function applyLocal(coll, id, data){ if (coll === "reglages"){ if (id === "club"){ S.reglages = data; } return; } S[coll]?.set(id, data); }
+async function call(name, ...args){
+  const r = await api[name](...args);
+  if (r && !r.ok && r.offline) throw Object.assign(new Error("Pas de connexion internet."), { code:"offline" });
+  if (!r || !r.ok){
+    const st = r?.status;
+    if (st === 401 || st === 403 || /row-level security|permission/i.test(r?.error || "")){ if (niveau === "utilisateur") throw Object.assign(new Error("Action réservée aux administrateurs."), { code:"ro" }); if (canWrite){ canWrite = false; updateRO(); scheduleRender(); } throw Object.assign(new Error("Votre compte est en consultation : demandez le rôle éditeur."), { code:"ro" }); }
+    throw new Error(r?.error || "Erreur de connexion à la base.");
+  }
+  return r;
+}
+/* ============ Hors connexion : copie locale, file d'attente, conflits ============ */
+const COLLS = ["equipes","clubs","salles","matchs","codes","licencies","indispos"];
+const IGNORE_CONFLIT = new Set(["maj"]);   // champs techniques : la dernière valeur l'emporte
+let horsLigne = false, FILE = [], CONFLITS = [], ABANDONS = [], cacheT = 0, avertiHorsLigne = false;
+const clone = o => o === undefined ? undefined : JSON.parse(JSON.stringify(o));
+const valeur = (c, id) => c === "reglages" ? (id === "club" ? S.reglages : undefined) : S[c]?.get(id);
+const stable = v => JSON.stringify(v, (k, x) => x && typeof x === "object" && !Array.isArray(x) ? Object.keys(x).sort().reduce((o, kk) => (o[kk] = x[kk], o), {}) : x);
+const vide = x => x === undefined || x === null || x === "" ? null : x;
+const egal = (a, b) => stable(vide(a)) === stable(vide(b));
+function enfiler(c, id, avant, apres){
+  let e = FILE.find(x => x.c === c && x.id === id);
+  if (!e){ e = { c, id, champs:{}, nouveau:avant === undefined }; FILE.push(e); }
+  if (apres === null){
+    if (e.nouveau) FILE.splice(FILE.indexOf(e), 1);   // créé puis supprimé hors connexion : rien à envoyer
+    else { e.del = true; e.champs = {}; }
+  } else {
+    delete e.del;
+    for (const k of new Set([...Object.keys(avant || {}), ...Object.keys(apres || {})])){
+      if (!(k in e.champs)){ if (egal(avant?.[k], apres?.[k])) continue; e.champs[k] = { base:clone(avant?.[k]) ?? null }; }
+      e.champs[k].val = clone(apres?.[k]) ?? null;
+      if (egal(e.champs[k].base, e.champs[k].val)) delete e.champs[k];
+    }
+    if (!Object.keys(e.champs).length) FILE.splice(FILE.indexOf(e), 1);
+  }
+  sauverCache(true); majEtat();
+}
+function passerHorsLigne(){
+  if (!horsLigne){ horsLigne = true; if (!avertiHorsLigne){ avertiHorsLigne = true; toast("Connexion perdue : vos modifications sont gardées sur ce PC et partiront au retour du réseau."); } }
+  majEtat();
+}
+async function write(coll, id, data, merge){
+  const cur = valeur(coll, id), avant = clone(cur);
+  const full = merge ? { ...(cur||{}), ...data } : data;
+  applyLocal(coll, id, full); scheduleRender();
+  if (S.demo) return;
+  if (horsLigne){ enfiler(coll, id, avant, full); return; }
+  try { if (merge && cur) await call("merge", coll, id, data); else await call("upsert", [{ collection:coll, id, data:full }]); sauverCache(); }
+  catch (e){ if (e.code === "offline"){ passerHorsLigne(); enfiler(coll, id, avant, full); return; } toast(e.message || "Échec de l'enregistrement."); syncNow(true); throw e; }
+}
+async function writeMany(rows, onStep){
+  const avant = rows.map(r => clone(valeur(r.collection, r.id)));
+  for (const r of rows) applyLocal(r.collection, r.id, r.data);
+  scheduleRender(); if (S.demo || !rows.length) return;
+  const enAttente = from => { for (let j = from; j < rows.length; j++) enfiler(rows[j].collection, rows[j].id, avant[j], rows[j].data); };
+  if (horsLigne){ enAttente(0); return; }
+  for (let i = 0; i < rows.length; i += 200){
+    try { await call("upsert", rows.slice(i, i+200)); }
+    catch (e){ if (e.code === "offline"){ passerHorsLigne(); enAttente(i); return; } throw e; }
+    onStep?.(Math.min(i+200, rows.length), rows.length);
+  }
+  sauverCache();
+}
+async function remove(coll, id){
+  const avant = clone(valeur(coll, id)); S[coll].delete(id); scheduleRender(); if (S.demo) return;
+  if (horsLigne){ enfiler(coll, id, avant, null); return; }
+  try { await call("delete", coll, id); sauverCache(); }
+  catch (e){ if (e.code === "offline"){ passerHorsLigne(); enfiler(coll, id, avant, null); return; } toast(e.message); syncNow(true); throw e; }
+}
+/* Copie locale sur le PC (données de la dernière synchronisation + modifications en attente) */
+function etatLocal(){
+  const data = {}; for (const c of COLLS) data[c] = Object.fromEntries(S[c]);
+  return JSON.stringify({ v:1, base:CFG.url || "", email:session?.email || "", role:session?.role || "", lastSync, savedAt:new Date().toISOString(), data, reglages:S.reglages, file:FILE, conflits:CONFLITS, abandons:ABANDONS });
+}
+function sauverCache(tout_de_suite){
+  if (!api || S.demo || !session) return;
+  clearTimeout(cacheT);
+  const go = () => { try { api.cache_save?.(etatLocal())?.catch?.(() => {}); } catch {} };
+  if (tout_de_suite) go(); else cacheT = setTimeout(go, 1500);
+}
+async function lireCache(){
+  try { const r = await api.cache_load(); if (!r.ok || !r.text) return null; const c = JSON.parse(r.text); return c.base === (CFG.url || "") ? c : null; } catch { return null; }
+}
+function appliquerCache(c, avecDonnees){
+  if (avecDonnees){ for (const k of COLLS) S[k] = new Map(Object.entries(c.data?.[k] || {})); S.reglages = c.reglages || {}; }
+  lastSync = c.lastSync || ""; FILE = c.file || []; CONFLITS = c.conflits || []; ABANDONS = c.abandons || [];
+}
+/* Au retour du réseau : envoyer la file, sans écraser ce qui a changé en ligne entre-temps */
+async function envoyerFile(){
+  const r = await call("fetch", lastSync || null);
+  const enLigne = new Map(r.rows.map(x => [x.collection + "/" + x.id, x]));
+  let envoyes = 0;
+  for (const e of FILE.slice()){
+    const srv = enLigne.get(e.c + "/" + e.id);
+    try {
+      if (e.del){ await call("delete", e.c, e.id); envoyes++; }
+      else if (srv?.deleted){ ABANDONS.push({ c:e.c, id:e.id, raison:"supprimé en ligne entre-temps", le:new Date().toISOString(), libelle:libelleDoc(e.c, e.id) }); }
+      else {
+        const patch = {};
+        for (const [k, ch] of Object.entries(e.champs)){
+          const vSrv = srv ? srv.data?.[k] : ch.base;   // pas changé en ligne depuis la dernière synchro : valeur de départ
+          if (egal(vSrv, ch.val)) continue;
+          if (IGNORE_CONFLIT.has(k) || egal(vSrv, ch.base)) patch[k] = ch.val;
+          else CONFLITS.push({ c:e.c, id:e.id, k, enLigne:clone(vSrv) ?? null, val:ch.val, le:new Date().toISOString(), libelle:libelleDoc(e.c, e.id) });
+        }
+        if (Object.keys(patch).length){ await call("merge", e.c, e.id, patch); envoyes++; }
+      }
+    } catch (err){
+      if (err.code === "offline") throw err;
+      ABANDONS.push({ c:e.c, id:e.id, raison:err.message || "refusé", le:new Date().toISOString(), libelle:libelleDoc(e.c, e.id) });
+    }
+    FILE.splice(FILE.indexOf(e), 1); sauverCache(true);
+  }
+  return envoyes;
+}
+async function reconnecter(){
+  const r = await api.resume();
+  if (r.ok && r.resumed){ horsLigne = false; avertiHorsLigne = false; session = { email:r.email, role:r.role }; logoBase = r.logoBase || logoBase; appliquerRole(r.role); updateRO(); return true; }
+  if (r.offline) return false;
+  // session refusée (mot de passe changé…) : reconnexion manuelle, la file reste sur le PC
+  horsLigne = false; session = null; dbState = "login"; render();
+  toast(FILE.length ? "Reconnectez-vous : vos modifications en attente seront envoyées ensuite." : "Reconnectez-vous pour continuer.");
+  return false;
+}
+async function demarrerHorsLigne(){
+  const c = await lireCache(); if (!c || !c.email) return false;
+  session = { email:c.email, role:c.role }; appliquerRole(c.role); updateRO();
+  appliquerCache(c, true); horsLigne = true; avertiHorsLigne = true; dbState = "ok"; render(); majEtat();
+  toast("Pas de connexion internet : vous travaillez sur la copie du " + (c.savedAt ? new Date(c.savedAt).toLocaleString("fr-FR", { dateStyle:"short", timeStyle:"short" }) : "dernier enregistrement") + ".");
+  return true;
+}
+function libelleDoc(c, id){
+  const m = c === "matchs" || c === "codes" ? S.matchs.get(id) : null;
+  if (m) return `${c === "codes" ? "Code e-Marque · " : ""}${nomEquipe(m)} – ${advNom(m)}, ${m.date ? dayLabel(m.date) : "date à fixer"} ${fmtH(m.heure)}`;
+  if (c === "licencies"){ const l = S.licencies.get(id); return l ? "Licencié · " + licLabel(l) : "Licencié"; }
+  if (c === "indispos") return "Arbitres indisponibles · " + dayLabel(id);
+  if (c === "equipes") return "Équipe · " + (equipe(id)?.nom || id);
+  if (c === "clubs") return "Club · " + (club(id)?.nom || id);
+  if (c === "salles") return "Salle · " + (salle(id)?.nom || id);
+  if (c === "reglages") return "Réglages du club";
+  return c + " · " + id;
+}
+function libelleChamp(c, k){
+  const col = [...colsOff(), ...colsDep()].find(x => x.k === k); if (col) return col.l;
+  const g = FFBB_GROUPES.find(([, fs]) => fs.includes(k)); if (g) return g[2];
+  return ({ code:"Code e-Marque", cle:"Clé e-Marque", noms:"Indisponibles", notes:"Notes", nom:"Nom", couleur:"Couleur", figes:"Valeurs figées" })[k] || k;
+}
+function montrerValeur(k, v){
+  if (vide(v) === null) return "(vide)";
+  if (k === "code" || k === "cle") return "•••• (masqué)";
+  if (Array.isArray(v)) return v.map(x => typeof x === "object" ? (x.l || x.k || "…") : x).join(", ");
+  if (typeof v === "object") return "(réglage modifié)";
+  return String(v);
+}
+function majEtat(){
+  const el = $("#syncInfo"); if (!el) return;
+  const nF = FILE.reduce((n, e) => n + (e.del ? 1 : Object.keys(e.champs).filter(k => !IGNORE_CONFLIT.has(k)).length), 0), nC = CONFLITS.length + ABANDONS.length;
+  let html = horsLigne ? `<span class="etat-off">Hors connexion${nF ? ` · ${nF} modification${nF > 1 ? "s" : ""} en attente` : ""}</span> <button type="button" class="btn sm" data-act="reessayer">Réessayer</button>`
+    : syncedAt ? `Synchronisé à ${syncedAt.getHours()}h${pad(syncedAt.getMinutes())}` : "";
+  if (nC) html += ` <button type="button" class="btn sm conflit-btn" data-act="conflits">${CONFLITS.length ? `${CONFLITS.length} conflit${CONFLITS.length > 1 ? "s" : ""} à résoudre` : `${ABANDONS.length} modification${ABANDONS.length > 1 ? "s" : ""} non appliquée${ABANDONS.length > 1 ? "s" : ""}`}</button>`;
+  el.innerHTML = html;
+}
+function openConflits(){
+  const lignes = CONFLITS.map((x, i) => `<div class="conflit"><b>${h(x.libelle || libelleDoc(x.c, x.id))}</b><span class="muted small">${h(libelleChamp(x.c, x.k))}</span>
+      <div class="vs-vals"><div><span class="eyebrow">En ligne</span><span>${h(montrerValeur(x.k, x.enLigne))}</span></div><div><span class="eyebrow">Votre saisie</span><span>${h(montrerValeur(x.k, x.val))}</span></div></div>
+      <div class="row"><button type="button" class="btn sm" data-conflit-ligne="${i}">Garder celle en ligne</button><button type="button" class="btn sm primary" data-conflit-moi="${i}">Garder la mienne</button></div></div>`).join("");
+  const ab = ABANDONS.length ? `<fieldset><legend>Modifications non appliquées</legend>${ABANDONS.map(x => `<div class="small">${h(x.libelle || libelleDoc(x.c, x.id))} : ${h(x.raison)}</div>`).join("")}<div><button type="button" class="btn sm" data-act="abandons-ok">J'ai compris</button></div></fieldset>` : "";
+  openDlg(dlgShell("Modifications faites hors connexion", `${CONFLITS.length ? `<p class="muted small" style="margin:0">Ces cases ont été modifiées en ligne par quelqu'un d'autre pendant que vous étiez hors connexion. Choisissez la valeur à garder.</p>${lignes}` : ""}${ab}` || "<p>Rien à résoudre.</p>",
+    `<span class="spacer"></span><button type="button" class="btn" data-close>Fermer</button>`));
+}
+async function resoudreConflit(i, garderMienne){
+  const x = CONFLITS[i]; if (!x) return;
+  if (garderMienne){
+    if (horsLigne){ toast("Reconnectez-vous d'abord pour envoyer votre valeur."); return; }
+    try { await call("merge", x.c, x.id, { [x.k]:x.val }); } catch (e){ if (e.code === "offline") passerHorsLigne(); toast(e.message); return; }
+  }
+  CONFLITS.splice(i, 1); sauverCache(true); majEtat();
+  if (CONFLITS.length || ABANDONS.length) openConflits(); else closeDlg();
+  syncNow(false);
+}
+
+async function runQueue(tasks, n = 4, onStep){ let i = 0, done = 0; const worker = async () => { while (i < tasks.length){ const t = tasks[i++]; try { await t(); } catch {} done++; onStep?.(done, tasks.length); } }; await Promise.all(Array.from({length:n}, worker)); }
+async function saveReglages(patch){ const data = { ...S.reglages, ...patch }; await write("reglages", "club", data); applyTheme(); }
+
+/* Synchronisation entre les PC */
+async function syncNow(full){
+  if (S.demo || !api || !session || syncBusy) return; syncBusy = true;
+  try {
+    if (horsLigne){ if (!(await reconnecter())) return; full = true; }
+    if (FILE.length){
+      const n = await envoyerFile();
+      toast((n ? `Connexion rétablie : ${n} modification${n > 1 ? "s" : ""} envoyée${n > 1 ? "s" : ""}.` : "Connexion rétablie.") + (CONFLITS.length ? ` ${CONFLITS.length} conflit${CONFLITS.length > 1 ? "s" : ""} à résoudre.` : ""));
+      full = true;
+    }
+    const r = await call("fetch", full ? null : (lastSync || null));
+    if (full){ for (const c of ["equipes","clubs","salles","matchs","codes","licencies","indispos"]) S[c] = new Map(); S.reglages = {}; }
+    for (const row of r.rows){
+      if (row.updated_at > lastSync) lastSync = row.updated_at;
+      if (row.collection === "reglages"){ if (row.id === "club") S.reglages = row.deleted ? {} : row.data; continue; }
+      const m = S[row.collection]; if (!m) continue;
+      if (row.deleted) m.delete(row.id); else m.set(row.id, row.data);
+    }
+    dbState = "ok"; syncedAt = new Date(); horsLigne = false;
+    if (r.rows.length || full){ scheduleRender(); sauverCache(); }
+  } catch (e){
+    if (e.code === "offline"){ passerHorsLigne(); if (dbState === "loading"){ const c = await lireCache(); if (c) appliquerCache(c, true); dbState = "ok"; scheduleRender(); } }
+    else { const el = $("#syncInfo"); if (el) el.textContent = "Synchronisation impossible"; if (dbState === "loading"){ dbState = "ok"; scheduleRender(); } }
+  }
+  finally { syncBusy = false; majEtat(); }
+}
+function updateSyncInfo(){ majEtat(); }
+setInterval(() => syncNow(false), 20000);
+setInterval(() => syncNow(true), 600000);
+window.addEventListener("focus", () => syncNow(false));
+
+/* ============ Rendu ============ */
+let rTimer = 0, pendingRender = false;
+function scheduleRender(){ cancelAnimationFrame(rTimer); rTimer = requestAnimationFrame(() => {
+  const a = document.activeElement;
+  if (a && a.closest && a.closest("#main [data-inline]")) { pendingRender = true; return; }
+  render();
+}); }
+document.addEventListener("focusin", e => { if (e.target.classList?.contains("codein")) e.target.type = "text"; });
+document.addEventListener("focusout", e => { if (e.target.classList?.contains("codein")) e.target.type = "password"; });
+document.addEventListener("focusout", () => { if (pendingRender) { pendingRender = false; setTimeout(scheduleRender, 50); } });
+function applyTheme(){
+  const c = S.reglages.couleur;
+  if (c && /^#[0-9a-f]{6}$/i.test(c)){
+    const r = parseInt(c.slice(1,3),16), g = parseInt(c.slice(3,5),16), b = parseInt(c.slice(5,7),16);
+    const lum = (0.299*r + 0.587*g + 0.114*b) / 255;
+    document.documentElement.style.setProperty("--accent", c);
+    document.documentElement.style.setProperty("--accent-ink", lum > 0.62 ? "#141a24" : "#ffffff");
+  } else { document.documentElement.style.removeProperty("--accent"); document.documentElement.style.removeProperty("--accent-ink"); }
+  $("#brandName").innerHTML = `${h(S.reglages.nom || "FR Blanzat Basket")}<span class="suffixe"> - gestion des matchs</span>`;
+  $("#brandLogo").innerHTML = (session || S.demo) ? usLogo(44) : "";
+  $("#season").textContent = season();
+}
+function updateRO(){ $("#roPill").hidden = canWrite; }
+function render(){
+  const r = route();
+  document.querySelectorAll("#tabs a").forEach(a => a.setAttribute("aria-current", a.getAttribute("href") === "#"+r ? "page" : "false"));
+  applyTheme();
+  const main = $("#main"); main.classList.toggle("large", r === "officiels" || r === "transport");
+  $("#tabs").hidden = !session && !S.demo; for (const a of document.querySelectorAll("#tabs a")) a.hidden = !isAdmin && ROUTES_ADMIN.includes(a.getAttribute("href").slice(1)); $("#btnCompte").hidden = !session;
+  if (dbState === "setup" && !S.demo){ main.innerHTML = vSetup(); return; }
+  if (dbState === "login" && !S.demo){ main.innerHTML = vLogin(); return; }
+  if (dbState === "loading" && !S.demo){ main.innerHTML = `<div class="empty"><h2>Chargement du planning…</h2></div>`; return; }
+  const demoBanner = S.demo ? `<div class="banner">Données d'exemple : rien n'est enregistré.<span class="spacer"></span><button class="btn sm" data-act="demo-off">Quitter l'exemple</button></div>` : "";
+  const html = ({ planning:vPlanning, equipes:vEquipes, salles:vSalles, officiels:vOfficiels, transport:vTransport, clubs:vClubs, donnees:vDonnees, licencies:vLicencies, reglages:vReglages })[r]();
+  main.innerHTML = demoBanner + html;
+  if (r === "donnees") afterDonnees();
+}
+
+/* ---- Connexion ---- */
+function vSetup(){
+  return `<section class="panel" style="max-width:620px;margin:20px auto;display:grid;gap:14px"><span class="eyebrow">Première ouverture</span><h2 style="font-size:28px">Relier l'application à la base du club</h2>
+    <p class="muted" style="margin:0">Ces deux informations se trouvent dans Supabase, menu <b>Project Settings &gt; API</b>. Elles sont les mêmes sur tous les PC du club.</p>
+    <form id="formSetup" style="display:grid;gap:12px">
+      <label class="field"><span>Adresse du projet (Project URL)</span><input type="text" id="cfgUrl" value="${h(CFG.url||"")}" placeholder="https://xxxxxxxx.supabase.co" autocomplete="off"></label>
+      <label class="field"><span>Clé publique (anon / publishable key)</span><input type="text" id="cfgKey" value="${h(CFG.key||"")}" placeholder="eyJhbGci… ou sb_publishable_…" autocomplete="off"></label>
+      <div class="row"><button class="btn primary" type="submit">Enregistrer et continuer</button><span class="small" id="setupMsg"></span></div>
+    </form>
+    <hr style="border:0;border-top:1px solid var(--line);width:100%"><div class="row"><span class="muted small">Pour découvrir l'application sans base :</span><button class="btn sm ghost" data-act="demo">Voir un exemple</button></div></section>`;
+}
+function vLogin(){
+  return `<section class="panel" style="max-width:460px;margin:20px auto;display:grid;gap:14px"><span class="eyebrow">Connexion</span><h2 style="font-size:28px">FR Blanzat Basket - gestion des matchs</h2>
+    <form id="formLogin" style="display:grid;gap:12px">
+      <label class="field"><span>Adresse e-mail</span><input type="text" id="lgEmail" value="${h(CFG.email||"")}" autocomplete="username"></label>
+      <label class="field"><span>Mot de passe</span><input type="password" id="lgPw" autocomplete="current-password" style="background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:7px 9px;width:100%"></label>
+      <label class="row small"><input type="checkbox" id="lgRemember" checked> Rester connecté sur ce PC</label>
+      <div class="row"><button class="btn primary" type="submit">Se connecter</button><span class="small" id="loginMsg"></span></div>
+    </form>
+    <p class="muted small" style="margin:0">Pas de compte ? Demandez à la personne qui gère la base du club de vous en créer un.</p>
+    <div class="row"><button class="btn sm ghost" data-act="setup">Changer de base</button><button class="btn sm ghost" data-act="demo">Voir un exemple</button></div></section>`;
+}
+function openCompte(){
+  const body = `<div class="stat-line"><div><b style="font-size:18px">${h(session?.email || "")}</b><span>Compte</span></div><div><b style="font-size:18px">${h(LIB_NIVEAU[niveau] || "Consultation")}</b><span>Rôle</span></div><div><b style="font-size:18px">${syncedAt ? `${syncedAt.getHours()}h${pad(syncedAt.getMinutes())}` : "—"}</b><span>Dernière synchronisation</span></div></div>
+    <div class="row"><button type="button" class="btn" data-act="sync">Synchroniser maintenant</button><button type="button" class="btn" data-act="logout">Se déconnecter</button><button type="button" class="btn ghost" data-act="setup">Changer de base</button></div>
+    <fieldset><legend>Changer mon mot de passe</legend><div class="row"><input type="password" id="newPw" placeholder="8 caractères minimum" style="background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:7px 9px;flex:1;min-width:0"><button type="button" class="btn" data-act="pw">Modifier</button></div></fieldset>
+    <p class="muted small" style="margin:0">Version ${h(CFG.version || "")} · base ${h((CFG.url||"").replace("https://",""))}</p>`;
+  openDlg(dlgShell("Mon compte", body, `<span class="spacer"></span><button type="button" class="btn" data-close>Fermer</button>`));
+}
+async function afterLogin(r){
+  session = { email:r.email, role:r.role }; logoBase = r.logoBase || logoBase; appliquerRole(r.role); updateRO();
+  horsLigne = false; dbState = "loading"; lastSync = ""; FILE = []; CONFLITS = []; ABANDONS = [];
+  const c = await lireCache(); if (c && c.email === r.email) appliquerCache(c, false);   // reprend la file en attente et la date de synchro
+  render(); await syncNow(true);
+}
+
+/* ---- Planning ---- */
+function filtered(){
+  const t = today(), q = norm(F.q);
+  return sortMatches([...S.matchs.entries()].filter(([, m]) => {
+    if (!visibleM(m)) return false;
+    if (F.equipe && m.equipeId !== F.equipe) return false;
+    if (F.lieu === "dom" && !m.domicile) return false;
+    if (F.lieu === "ext" && m.domicile) return false;
+    if (F.mode !== "calendrier"){
+      if (F.periode === "avenir" && m.date && m.date < t) return false;
+      if (F.periode === "passes" && (!m.date || m.date >= t)) return false;
+    }
+    if (q && !norm([nomEquipe(m), advNom(m), salleNom(m), m.competition].join(" ")).includes(q)) return false;
+    return true;
+  }));
+}
+function equipeOptions(sel, withAll = "Toutes les équipes"){
+  return (withAll ? `<option value="">${withAll}</option>` : "") + sortedEquipes().filter(([id, e]) => e.visible !== false || id === sel).map(([id, e]) => `<option value="${h(id)}" ${id === sel ? "selected" : ""}>${h(e.nom + (e.clubId ? " · " + clubDe(e) : ""))}</option>`).join("");
+}
+function planningToolbar(){
+  const seg = (k, opts) => `<div class="seg" role="group">${opts.map(([v,l]) => `<button data-f="${k}" data-v="${v}" aria-pressed="${F[k] === v}">${l}</button>`).join("")}</div>`;
+  return `<div class="toolbar">
+    <div class="field"><span>Affichage</span>${seg("mode", [["weekend","Par week-end"],["equipe","Par équipe"],["calendrier","Calendrier"]])}</div>
+    <label class="field"><span>Équipe</span><select id="fEquipe" data-fsel="equipe">${equipeOptions(F.equipe)}</select></label>
+    <div class="field"><span>Lieu</span>${seg("lieu", [["tous","Tous"],["dom","Domicile"],["ext","Extérieur"]])}</div>
+    ${F.mode !== "calendrier" ? `<div class="field"><span>Période</span>${seg("periode", [["avenir","À venir"],["passes","Passés"],["tout","Toute la saison"]])}</div>` : ""}
+    <label class="field grow"><span>Rechercher</span><input type="search" id="fQ" placeholder="Adversaire, salle, compétition…" value="${h(F.q)}"></label>
+    ${canWrite ? `<button class="btn primary" data-act="new-match">+ Ajouter un match</button>` : ""}
+  </div>`;
+}
+function matchRow(id, m, conf){
+  const st = m.statut && m.statut !== "prevu" ? STATUTS[m.statut] : null;
+  const e = equipe(m.equipeId);
+  const us = `<span class="side us ${m.domicile ? "home" : ""}">${m.domicile ? `<span class="nm">${h(usNom(m))}</span>${usLogoM(m,28)}` : `${usLogoM(m,28)}<span class="nm">${h(usNom(m))}</span>`}</span>`;
+  const them = `<span class="side them ${m.domicile ? "" : "home"}">${m.domicile ? `${advLogo(m,28)}<span class="nm">${h(advNom(m))}</span>` : `<span class="nm">${h(advNom(m))}</span>${advLogo(m,28)}`}</span>`;
+  const hasScore = m.scoreNous !== "" && m.scoreNous != null && m.scoreEux !== "" && m.scoreEux != null;
+  const score = hasScore ? (m.domicile ? `${m.scoreNous}–${m.scoreEux}` : `${m.scoreEux}–${m.scoreNous}`) : "";
+  const OR = offReq(), offCount = OR.filter(k => filled(m[k])).length;
+  const flags = [
+    `<span class="badge ${m.domicile ? "b-dom" : "b-ext"}">${m.domicile ? "Dom." : "Ext."}</span>`,
+    st ? `<span class="badge ${st[1]}">${st[0]}</span>` : "",
+    isExempt(m) ? `<span class="badge b-neutral" title="Pas de match pour cette équipe ce jour-là">Exempté</span>` : "",
+    conf ? `<span class="badge b-bad" title="Chevauchement dans la même salle">Conflit salle</span>` : "",
+    (() => { const ec = ecarts(m); return ec.length ? `<span class="badge b-warn" title="${h(ec.map(e => `${e.l} : ici ${e.nous}, FFBB ${e.ffbb}${e.fige ? " (figé)" : ""}`).join(" · "))}">Écart FFBB</span>` : ""; })(),
+    m.domicile && !isOff(m) ? `<span class="dots" title="Officiels : ${offCount}/${OR.length}">${OR.map(k => `<i class="${filled(m[k]) ? "on" : ""}"></i>`).join("")}</span>` : "",
+    m.domicile && canWrite && S.codes.get(id)?.code ? `<span class="badge b-neutral" title="Code de match saisi">Code</span>` : "",
+    !m.domicile && !isOff(m) && m.rdvHeure ? `<span class="badge b-neutral num">RDV ${h(fmtH(m.rdvHeure))}</span>` : "",
+  ].join("");
+  return `<button class="match ${m.domicile ? "dom" : "ext"} ${isOff(m) ? "off" : ""}" data-open="${h(id)}">
+    <span class="time">${h(fmtH(m.heure))}<small>${m.journee ? "J" + h(String(m.journee).replace(/^J/i,"")) : ""}</small></span>
+    <span class="team"><span class="chip" style="--c:${h(e?.couleur || "var(--muted)")}"><i></i>${h(nomEquipe(m))}</span><span class="comp">${h(m.competition || e?.categorie || "")}</span></span>
+    <span class="affiche">${m.domicile ? us : them}<span class="vs ${hasScore ? "score" : ""}">${hasScore ? h(score) : "vs"}</span>${m.domicile ? them : us}</span>
+    <span class="place"><span class="s" style="display:block">${h(salleNom(m) || (m.domicile ? "Salle à préciser" : "Salle adverse à préciser"))}</span>${!m.domicile && salle(m.salleId)?.ville ? `<span class="muted small">${h(salle(m.salleId).ville)}</span>` : ""}</span>
+    <span class="flags">${flags}</span>
+  </button>`;
+}
+function vPlanning(){
+  if (F.equipe && !S.equipes.has(F.equipe) && dbState === "ok") F.equipe = "";
+  if (!S.matchs.size) return emptyState();
+  const list = filtered(), conf = conflicts();
+  let body = "";
+  if (F.mode === "calendrier") body = calendarView(list);
+  else if (!list.length) body = `<div class="empty"><h2>Aucun match pour ces filtres</h2><p>Changez d'équipe, de lieu ou de période pour voir d'autres rencontres.</p></div>`;
+  else if (F.mode === "equipe"){
+    const g = new Map(); for (const [id, m] of list){ const k = m.equipeId || "?"; if (!g.has(k)) g.set(k, []); g.get(k).push([id, m]); }
+    const order = sortedEquipes().map(([id]) => id).filter(id => g.has(id)).concat([...g.keys()].filter(k => !S.equipes.has(k)));
+    body = order.map(k => { const arr = g.get(k), e = equipe(k), dom = arr.filter(x => x[1].domicile).length;
+      return `<section class="group"><div class="group-head"><h2><span class="chip" style="--c:${h(e?.couleur||"var(--muted)")};font-size:inherit"><i></i>${h(e?.nom || "Équipe non rattachée")}</span></h2><span class="count num">${arr.length} match${arr.length>1?"s":""} · ${dom} à domicile</span>${e?.coach ? `<span class="count">Coach : ${h(e.coach)}</span>` : ""}</div>
+      ${arr.map(([id, m]) => `<div class="day-head">${h(dayLabel(m.date))}</div>${matchRow(id, m, conf.has(id))}`).join("")}</section>`; }).join("");
+  } else {
+    const g = new Map(); for (const [id, m] of list){ const k = m.date ? weekendKey(m.date) : "zzzz"; if (!g.has(k)) g.set(k, []); g.get(k).push([id, m]); }
+    body = [...g.keys()].sort().map(k => { const arr = g.get(k), dom = arr.filter(x => x[1].domicile).length;
+      let lastDay = "", rows = "";
+      for (const [id, m] of arr){ if (m.date !== lastDay){ lastDay = m.date; rows += `<div class="day-head">${h(dayLabel(m.date))}</div>`; } rows += matchRow(id, m, conf.has(id)); }
+      return `<section class="group"><div class="group-head"><h2>${k === "zzzz" ? "Date à fixer" : h(weekendLabel(k))}</h2><span class="count num">${arr.length} match${arr.length>1?"s":""} · ${dom} à domicile · ${arr.length-dom} à l'extérieur</span></div>${rows}</section>`; }).join("");
+  }
+  return planningToolbar() + body;
+}
+function calendarView(list){
+  const [y, mo] = F.mois.split("-").map(Number), first = new Date(y, mo-1, 1);
+  const start = addDays(first, -((first.getDay() + 6) % 7)), t = today();
+  const by = new Map(); for (const [id, m] of list){ if (!m.date) continue; if (!by.has(m.date)) by.set(m.date, []); by.get(m.date).push([id, m]); }
+  let cells = ["lun.","mar.","mer.","jeu.","ven.","sam.","dim."].map(d => `<div class="dh">${d}</div>`).join("");
+  for (let i = 0; i < 42; i++){
+    const d = addDays(start, i), ds = fmtD(d); if (i >= 35 && d.getMonth() !== mo-1) break;
+    const evs = (by.get(ds) || []).map(([id, m]) => `<button class="ev ${m.domicile ? "dom" : "ext"}" data-open="${h(id)}" title="${h(nomEquipe(m) + " – " + advNom(m))}"><b>${h(fmtH(m.heure))}</b> ${h(nomEquipe(m))} ${m.domicile ? "vs" : "@"} ${h(advNom(m))}</button>`).join("");
+    cells += `<div class="cell ${d.getMonth() !== mo-1 ? "out" : ""} ${ds === t ? "today" : ""}"><span class="d num">${d.getDate()}</span>${evs}</div>`;
+  }
+  return `<div class="cal-nav"><button class="btn sm" data-cal="-1" aria-label="Mois précédent">‹</button><h2>${MOIS[mo-1]} ${y}</h2><button class="btn sm" data-cal="1" aria-label="Mois suivant">›</button><button class="btn sm ghost" data-cal="0">Aujourd'hui</button></div><div class="cal-scroll"><div class="cal">${cells}</div></div>`;
+}
+function emptyState(){
+  return `<div class="empty"><span class="eyebrow">Premiers pas</span><h2>Le planning est vide</h2>
+    <p>Ajoutez les rencontres de vos équipes pour les voir par week-end, par équipe ou sur le calendrier.</p>
+    <ol class="steps">
+      <li>Renseignez le nom, la couleur et le logo du club dans <a href="#clubs">Club &amp; logos</a>.</li>
+      <li>Importez le fichier produit par le script FFBB, ou un tableau CSV, dans <a href="#donnees">Import / export</a>.</li>
+      <li>Complétez ensuite officiels, tables de marque et déplacements.</li>
+    </ol>
+    <div class="row" style="justify-content:center">${isAdmin ? `<a class="btn primary" href="#donnees">Importer des matchs</a>` : ""}${canWrite ? `<button class="btn" data-act="new-match">Ajouter un match à la main</button>` : ""}<button class="btn ghost" data-act="demo">Voir un exemple</button></div></div>`;
+}
+
+/* ---- Équipes ---- */
+function vEquipes(){
+  const t = today(), all = sortedEquipes(), list = all.filter(([, e]) => e.visible !== false), nHid = all.length - list.length;
+  const rows = list.map(([id, e]) => {
+    const ms = [...S.matchs.values()].filter(m => m.equipeId === id);
+    const next = ms.filter(m => m.date >= t && !isOff(m)).sort((a,b) => (a.date+a.heure).localeCompare(b.date+b.heure))[0];
+    return `<tr><td><span class="chip" style="--c:${h(e.couleur||"var(--muted)")}"><i></i>${h(e.nom)}</span></td><td>${h(e.categorie||"")}</td><td>${h(e.coach||"")}</td>
+      <td class="num">${ms.length}</td><td>${next ? `${h(dayLabel(next.date))} · ${h(fmtH(next.heure))} <span class="badge ${next.domicile?"b-dom":"b-ext"}">${next.domicile?"Dom.":"Ext."}</span>` : `<span class="muted">—</span>`}</td>
+      <td class="rd"><button class="btn sm" data-team-view="${h(id)}">Voir le planning</button> ${canWrite ? `<button class="btn sm ghost" data-edit-team="${h(id)}">Modifier</button>` : ""}</td></tr>`;
+  }).join("");
+  return `<div class="row"><h2 style="font-size:24px">Équipes</h2>${nHid && isAdmin ? `<a class="small" href="#reglages">${nHid} équipe${nHid>1?"s":""} masquée${nHid>1?"s":""} (Réglages)</a>` : ""}<span class="spacer"></span>${canWrite ? `<button class="btn primary" data-edit-team="">+ Ajouter une équipe</button>` : ""}</div>
+  ${list.length ? `<div class="tbl-wrap"><table><thead><tr><th>Équipe</th><th>Catégorie</th><th>Coach</th><th>Matchs</th><th>Prochain match</th><th></th></tr></thead><tbody>${rows}</tbody></table></div>` : `<div class="empty"><h2>Aucune équipe</h2><p>Les équipes sont créées automatiquement à l'import, ou ajoutées à la main.</p></div>`}`;
+}
+
+/* ---- Salles ---- */
+function weekendsAvailable(){ const ks = new Set(); for (const m of S.matchs.values()) if (m.date) ks.add(weekendKey(m.date)); return [...ks].sort(); }
+function vSalles(){
+  const wks = weekendsAvailable(), t = weekendKey(today());
+  if (!F.salleJour || !wks.includes(F.salleJour)) F.salleJour = wks.find(k => k >= t) || wks[wks.length-1] || "";
+  const conf = conflicts();
+  let tl = `<div class="empty"><h2>Aucun match à domicile</h2><p>Les créneaux de vos salles apparaîtront ici.</p></div>`;
+  if (F.salleJour){
+    const sa = F.salleJour, days = [addDays(parseD(sa), -1), parseD(sa), addDays(parseD(sa), 1)].map(fmtD);
+    const ws = weekendKey(sa), wkDays = []; for (let i = -5; i <= 1; i++) wkDays.push(fmtD(addDays(parseD(sa), i)));
+    const ms = [...S.matchs.entries()].filter(([, m]) => m.domicile && wkDays.includes(m.date) && !isOff(m) && visibleM(m));
+    const blocks = [];
+    for (const ds of wkDays){
+      const dayMs = ms.filter(([, m]) => m.date === ds); if (!dayMs.length) continue;
+      const bySalle = new Map(); for (const [id, m] of dayMs){ const k = salleNom(m) || "Salle à préciser"; if (!bySalle.has(k)) bySalle.set(k, []); bySalle.get(k).push([id, m]); }
+      let lo = 24*60, hi = 0; for (const [, m] of dayMs){ const s = toMin(m.heure); if (s == null) continue; lo = Math.min(lo, s); hi = Math.max(hi, s + dureeOf(m)); }
+      if (lo > hi){ lo = 9*60; hi = 20*60; }
+      lo = Math.floor(lo/60)*60 - 0; hi = Math.ceil(hi/60)*60; const span = Math.max(hi - lo, 120);
+      const pct = v => ((v - lo) / span * 100).toFixed(2) + "%";
+      let hours = ""; for (let x = lo; x <= hi; x += 60) hours += `<span style="left:${pct(x)}">${x/60}h</span>`;
+      const rows = [...bySalle.entries()].map(([nm, arr]) => {
+        arr.sort((a,b) => (a[1].heure||"").localeCompare(b[1].heure||""));
+        const ends = []; let grid = ""; for (let x = lo + 60; x < hi; x += 60) grid += `<i class="tl-grid" style="left:${pct(x)}"></i>`;
+        const bl = arr.map(([id, m], i) => { const s = toMin(m.heure); if (s == null) return ""; const lane = arr.slice(0, i).some(([, o]) => { const os = toMin(o.heure); return os != null && os < s + dureeOf(m) && s < os + dureeOf(o); }) ? "half2" : (conf.has(id) ? "half" : "");
+          return `<button class="tl-block ${conf.has(id) ? "conflict" : ""} ${lane}" style="left:${pct(s)};width:calc(${pct(s + dureeOf(m))} - ${pct(s)})" data-open="${h(id)}" title="${h(fmtH(m.heure) + " " + nomEquipe(m) + " vs " + advNom(m))}"><b class="num">${h(fmtH(m.heure))}</b> ${h(nomEquipe(m))}<br><span>${h(advNom(m))}</span></button>`; }).join("");
+        return `<div class="tl-row"><div><b>${h(nm)}</b><div class="muted small num">${arr.length} match${arr.length>1?"s":""}</div></div><div class="tl-track">${grid}${bl}</div></div>`;
+      }).join("");
+      blocks.push(`<section class="panel tl"><div class="row"><h3 style="font-size:19px">${h(cap(dayLabel(ds)))}</h3><span class="spacer"></span><span class="muted small num">${dayMs.length} match${dayMs.length>1?"s":""} à domicile</span></div><div class="tl-hours">${hours}</div>${rows}</section>`);
+    }
+    tl = blocks.join("") || `<div class="empty"><h2>Aucun match à domicile cette semaine</h2><p>Choisissez un autre week-end.</p></div>`;
+  }
+  const nConf = [...conf].filter(id => S.matchs.get(id)?.date >= today()).length;
+  const salleRows = [...S.salles.entries()].sort((a,b) => String(a[1].nom).localeCompare(String(b[1].nom), "fr")).map(([id, s]) => `<tr><td><b>${h(s.nom)}</b> ${s.nous ? `<span class="badge b-dom">Club</span>` : ""}</td><td>${h(s.adresse||"")}</td><td>${h(s.ville||"")}</td><td class="rd">${canWrite ? `<button class="btn sm ghost" data-edit-salle="${h(id)}">Modifier</button>` : ""}</td></tr>`).join("");
+  return `<div class="toolbar"><label class="field"><span>Week-end</span><select id="fSalleJour">${wks.map(k => `<option value="${k}" ${k === F.salleJour ? "selected" : ""}>${h(weekendLabel(k))}</option>`).join("")}</select></label>
+    <div class="field"><span>Durée d'un créneau</span><span class="row"><b class="num">${h(S.reglages.dureeMatch || 105)} min</b>${isAdmin ? `<a class="small" href="#reglages">par équipe dans Réglages</a>` : ""}</span></div>
+    <span class="spacer"></span>${nConf ? `<span class="badge b-bad">${nConf} match${nConf>1?"s":""} en conflit à venir</span>` : `<span class="badge b-dom">Aucun conflit à venir</span>`}</div>
+  ${tl}
+  <div class="row"><h2 style="font-size:22px">Bibliothèque des salles</h2><span class="spacer"></span>${canWrite ? `<button class="btn" data-edit-salle="">+ Ajouter une salle</button>` : ""}</div>
+  ${salleRows ? `<div class="tbl-wrap"><table><thead><tr><th>Salle</th><th>Adresse</th><th>Ville</th><th></th></tr></thead><tbody>${salleRows}</tbody></table></div>` : `<p class="muted">Aucune salle enregistrée. Elles sont créées à l'import ou à la saisie d'un match.</p>`}`;
+}
+
+/* ---- Officiels & déplacements (tableaux éditables) ---- */
+function inlineTable(kind){
+  const t = today(), dom = kind === "officiels";
+  const onlyMissing = LS.get("manquants-"+kind, false);
+  const arr = sortMatches([...S.matchs.entries()].filter(([, m]) => visibleM(m) && !!m.domicile === dom && !isOff(m) && (!m.date || m.date >= t) && (!F.equipe || m.equipeId === F.equipe)));
+  const cols = dom ? colsOff() : colsDep(), fields = cols.map(c => [c.k, c.l, !!c.req, c.type || "text"]), colDe = new Map(cols.map(c => [c.k, c]));
+  const groupes = []; cols.forEach((c, i) => { if (c.stack && groupes.length) groupes[groupes.length-1].push(fields[i]); else groupes.push([fields[i]]); });
+  const titreGroupe = g => { const ls = g.map(f => f[1]); return ls.every(l => norm(l) === norm(ls[0])) && ls.length > 1 ? `${ls[0]} (×${ls.length})` : ls.join(" / "); };
+  const missing = m => cols.some(c => c.req && !filled(m[c.k]));
+  const shown = onlyMissing ? arr.filter(([, m]) => missing(m)) : arr;
+  const nMiss = arr.filter(([, m]) => missing(m)).length;
+  let lastWk = "", lastJour = "", rows = "";
+  for (const [id, m] of shown){
+    const wk = m.date ? weekendKey(m.date) : "zzzz";
+    if (wk !== lastWk){ lastWk = wk; rows += `<tr class="sep"><td colspan="${groupes.length + 2 + (dom && canWrite ? 1 : 0)}">${wk === "zzzz" ? "Date à fixer" : h(weekendLabel(wk))}</td></tr>`; }
+    if (dom && m.date && m.date !== lastJour){ lastJour = m.date; const ind = S.indispos.get(m.date)?.noms || [];
+      if (ind.length) rows += `<tr class="indispo-row"><td colspan="${groupes.length + 2 + (canWrite ? 1 : 0)}"><b>${h(cap(dayLabel(m.date)))}</b> · arbitres indisponibles : ${ind.map((n, i) => `<span class="indispo-nom">${h(n)}${canWrite ? `<button type="button" class="x" data-indispo-del="${h(m.date)}" data-i="${i}" title="Retirer ${h(n)}" aria-label="Retirer ${h(n)}">×</button>` : ""}</span>`).join(" ")}</td></tr>`; }
+    rows += `<tr><td class="quand"><b class="num">${h(JOURS_C[parseD(m.date)?.getDay()] || "")} ${h(parseD(m.date)?.getDate() || "")} · ${h(fmtH(m.heure))}</b><div class="small muted">${dom ? h(salleNom(m)) : h(salleNom(m) || "")}${!dom && salle(m.salleId)?.ville ? " · " + h(salle(m.salleId).ville) : ""}</div></td>
+      <td class="match-c"><span class="chip" style="--c:${h(equipe(m.equipeId)?.couleur||"var(--muted)")}"><i></i>${h(nomEquipe(m))}</span><div class="small muted">${dom ? "reçoit" : "chez"} ${h(advNom(m))}</div>${dom && canWrite && !S.demo ? `<button type="button" class="btn sm partage-btn ${lienActif(id) ? "fait" : ""}" data-partage="${h(id)}" title="Envoyer un lien d'inscription pour ce match">${lienActif(id) ? "Partagé ✓" : "Partager"}</button>` : ""}</td>
+      ${groupes.map(g => { const multi = g.length > 1, memes = multi && g.every(f => norm(f[1]) === norm(g[0][1]));
+        const ph = ([, l, req], j) => multi ? (memes ? `${l} ${j+1}` : l) + (req ? " *" : "") : (req ? "À trouver" : "—");
+        return canWrite ? `<td data-inline data-label="${h(titreGroupe(g))}"><div class="pile">${g.map(([k, l, req, typ], j) => { const v = m[k] || "";
+            const inp = `<input type="${typ}" class="${req && !String(v).trim() ? "miss" : ""}" id="in-${h(id)}-${h(k)}" data-inline-field="${h(k)}" data-req="${req ? 1 : 0}" data-id="${h(id)}" value="${h(v)}" aria-label="${h(l)}" title="${h(dom ? titreOff(l, v) : l + (v ? " : " + v : ""))}" ${dom && typ !== "time" ? `data-lic="1" autocomplete="off"` : ""} ${typ !== "time" ? `placeholder="${h(ph([k, l, req], j))}"` : ""}>`;
+            const kb = dom && typ !== "time" ? boutonsOff(v, colDe.get(k)) : ""; return kb ? `<div class="avec-cle">${inp}${kb}</div>` : inp; }).join("")}</div></td>`
+          : `<td data-label="${h(titreGroupe(g))}"><div class="pile">${g.map(([k, l, req, typ]) => { const v = m[k] || ""; return `<span title="${h(l)}">${v ? h(typ === "time" ? fmtH(v) : v) : `<span class="muted">${req ? "À trouver" : "—"}</span>`}</span>`; }).join("")}</div></td>`; }).join("")}${dom && canWrite ? `<td data-inline data-label="Code e-Marque"><div class="${S.codes.get(id)?.code ? "avec-cle" : ""}"><input type="password" class="codein" id="code-${h(id)}" data-code="${h(id)}" value="${h(S.codes.get(id)?.code || "")}" placeholder="—" autocomplete="off" aria-label="Code de match" style="min-width:0;width:100%">${codeBtn(id)}</div></td>` : ""}</tr>`;
+  }
+  const title = dom ? "Officiels et tables de marque" : "Déplacements";
+  const intro = dom ? "Matchs à domicile à venir. Les cases orange sont obligatoires et restent à pourvoir." + (isAdmin ? " Colonnes modifiables dans Réglages." : "") : "Matchs à l'extérieur à venir : heure et lieu de rendez-vous, parents conducteurs.";
+  return `<div class="toolbar"><div class="field grow"><h2 style="font-size:24px">${title}</h2><span class="muted small" style="font-weight:400;letter-spacing:0">${intro}</span></div>
+    <label class="field"><span>Équipe</span><select data-fsel="equipe">${equipeOptions(F.equipe)}</select></label>
+    <div class="field"><span>Afficher</span><div class="seg"><button data-missing="${kind}" data-v="0" aria-pressed="${!onlyMissing}">Tous (${arr.length})</button><button data-missing="${kind}" data-v="1" aria-pressed="${onlyMissing}">À compléter (${nMiss})</button></div></div>${dom ? `<button class="btn" data-act="pdf-off">${WEB ? "Imprimer / PDF" : "Exporter en PDF"}</button>` : ""}${dom && canWrite && !S.demo ? `<button class="btn" data-act="partage-arb" title="Lien pour le groupe des arbitres : tous les matchs à domicile à venir, colonnes d'arbitrage seulement">Partager aux arbitres</button>` : ""}</div>
+  ${shown.length ? `<div class="tbl-wrap tbl-fit"><table><colgroup><col style="width:88px"><col style="width:${dom ? 160 : 190}px">${groupes.map(() => "<col>").join("")}${dom && canWrite ? `<col style="width:96px">` : ""}</colgroup><thead><tr><th>Quand</th><th>Match</th>${groupes.map(g => `<th>${h(titreGroupe(g))}</th>`).join("")}${dom && canWrite ? `<th title="Visible par les éditeurs uniquement">Code e-Marque</th>` : ""}</tr></thead><tbody>${rows}</tbody></table></div>` : `<div class="empty"><h2>${onlyMissing ? "Tout est complet" : "Aucun match à venir"}</h2><p>${onlyMissing ? "Chaque match à venir a ses informations." : dom ? "Les matchs à domicile à venir apparaîtront ici." : "Les matchs à l'extérieur à venir apparaîtront ici."}</p></div>`}`;
+}
+const vOfficiels = () => { chargerPartagesFond(); return inlineTable("officiels"); };
+const vTransport = () => inlineTable("transport");
+
+/* ---- Licenciés ---- */
+/* Retrouver le licencié saisi dans une case (par n° de licence, sinon par prénom + nom exacts) */
+let licIdx = { map:null, size:-1, parLic:new Map(), parNom:new Map() };
+function licIndex(){
+  if (licIdx.map === S.licencies && licIdx.size === S.licencies.size) return licIdx;
+  const parLic = new Map(), parNom = new Map();
+  for (const [id, l] of S.licencies){
+    if (l.licence) parLic.set(String(l.licence).toUpperCase(), id);
+    for (const n of [norm(`${l.prenom} ${l.nom}`), norm(`${l.nom} ${l.prenom}`)]) parNom.set(n, parNom.has(n) && parNom.get(n) !== id ? null : id);
+  }
+  return licIdx = { map:S.licencies, size:S.licencies.size, parLic, parNom };
+}
+function licDe(v){
+  v = String(v || "").trim(); if (!v || !S.licencies.size) return null;
+  const ix = licIndex(), lic = /([A-Z]{2}\d{6})\s*$/i.exec(v);
+  const id = lic ? ix.parLic.get(lic[1].toUpperCase()) : ix.parNom.get(norm(v));
+  return id ? [id, S.licencies.get(id)] : null;
+}
+const ICONE_CLE = `<svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="7.5" cy="15.5" r="4.5"/><path d="M10.7 12.3 20 3M16 7l3 3M14 9l2 2"/></svg>`;
+function cleBtn(v){
+  const r = licDe(v); if (!r || !r[1]?.cle) return "";
+  return `<button type="button" class="cle-btn" data-cle="${h(r[0])}" title="Copier la clé de validation de ${h(licLabel(r[1]))}" aria-label="Copier la clé de validation">${ICONE_CLE}</button>`;
+}
+/* Colonnes où l'on copie le n° de licence (délégué de club, délégué fair-play… réglable dans Réglages) */
+const estLicCol = c => c?.lic ?? /delegue/.test(norm(c?.l));
+function licBtn(v){
+  const r = licDe(v); if (!r || !r[1]?.licence) return "";
+  return `<button type="button" class="cle-btn lic-btn" data-copielic="${h(r[0])}" title="Copier le n° de licence ${h(r[1].licence)} (${h(licLabel(r[1]).replace(/\s+–\s+\S+$/, ""))})" aria-label="Copier le n° de licence">N°</button>`;
+}
+/* Infobulle : rôle, nom et n° de licence retrouvé, même si le nom a été tapé sans licence */
+function titreOff(l, v){
+  if (!v) return l;
+  const r = licDe(v);
+  return r && r[1]?.licence && !String(v).includes(r[1].licence) ? `${l} : ${v} – licence ${r[1].licence}` : `${l} : ${v}`;
+}
+const boutonsOff = (v, col) => cleBtn(v) + (estLicCol(col) ? licBtn(v) : "");
+function majCleBtn(input){
+  const col = colsOff().find(c => "o_" + c.k === input.id);
+  const html = boutonsOff(input.value, col), wrap = input.parentElement?.classList.contains("avec-cle") ? input.parentElement : null;
+  if (wrap){ wrap.querySelectorAll(".cle-btn").forEach(b => b.remove()); if (html) input.insertAdjacentHTML("afterend", html); }
+  else if (html) input.insertAdjacentHTML("afterend", html), input.parentElement.classList.add("avec-cle");
+}
+async function copierCle(id){
+  const cle = S.licencies.get(id)?.cle; if (!cle){ toast("Pas de clé enregistrée pour ce licencié."); return; }
+  return copierSecret(cle, "Clé copiée : collez-la dans l'e-Marque (Ctrl+V)");
+}
+async function copierCode(mid){
+  const code = S.codes.get(mid)?.code || ($("#mCode")?.dataset.mid === mid ? $("#mCode").value.trim() : "");
+  if (!code){ toast("Pas de code de match enregistré."); return; }
+  return copierSecret(code, "Code de match copié : collez-le dans l'e-Marque (Ctrl+V)");
+}
+const codeBtn = mid => S.codes.get(mid)?.code ? `<button type="button" class="cle-btn" data-copiecode="${h(mid)}" title="Copier le code de match" aria-label="Copier le code de match">${ICONE_CLE}</button>` : "";
+async function copierSecret(cle, msg){
+  try { await navigator.clipboard.writeText(cle); toast(msg); return; } catch {}
+  try { const ta = document.createElement("textarea"); ta.value = cle; ta.setAttribute("readonly", ""); ta.style.cssText = "position:fixed;opacity:0;pointer-events:none"; (dlg.open ? dlg : document.body).appendChild(ta); ta.select(); const ok = document.execCommand("copy"); ta.remove(); if (ok){ toast(msg); return; } } catch {}
+  toast("Copie impossible sur ce poste.");
+}
+const licLabel = l => `${l.prenom || ""} ${String(l.nom || "").toUpperCase()}${l.licence ? " – " + l.licence : ""}`.trim();
+function vLicencies(){
+  if (!canWrite) return `<div class="empty"><h2>Réservé aux éditeurs</h2></div>`;
+  const q = norm(LS.get("qlic", ""));
+  const list = [...S.licencies.entries()].filter(([, l]) => !q || norm(licLabel(l) + " " + (l.categorie||"")).includes(q)).sort((a,b) => String(a[1].nom).localeCompare(String(b[1].nom), "fr") || String(a[1].prenom).localeCompare(String(b[1].prenom), "fr"));
+  const shown = list.slice(0, 400);
+  return `<div class="toolbar"><div class="field grow"><h2 style="font-size:24px">Licenciés</h2><span class="muted small" style="font-weight:400">${S.licencies.size} licencié${S.licencies.size>1?"s":""} · visibles uniquement par les éditeurs</span></div>
+    <label class="field"><span>Rechercher</span><input type="search" id="qLic" value="${h(LS.get("qlic",""))}" placeholder="Nom, licence, catégorie"></label>
+    <label class="btn primary" for="upLic">Importer l'export FBI</label><input type="file" id="upLic" accept=".xlsx,.csv,.txt" hidden>
+    <button class="btn" data-act="lic-new">+ Ajouter</button></div>
+  <div class="panel small muted" style="display:grid;gap:6px"><span>Dans FBI, exportez la liste des licenciés du club au format Excel (.xlsx) ou CSV, puis importez-la ici. Seuls le nom, le prénom, le numéro de licence, la catégorie et le sexe sont conservés. Un nouvel import met simplement la liste à jour.</span>
+    <label class="check"><input type="checkbox" id="licPurge"> Au prochain import, retirer les licenciés absents du fichier (non renouvelés)</label>
+    <span>Dans les cases des officiels, tapez quelques lettres du nom ou du prénom : les licenciés correspondants sont proposés juste en dessous (flèches + Entrée, ou clic). Sans correspondance, Entrée valide le texte saisi tel quel.</span>
+    <span>Colonne <b>Clé e-Marque</b> : saisissez la clé de validation des licenciés qui en ont une (elle reste masquée). Dans les officiels, un petit bouton <span class="cle-btn" style="display:inline-grid;vertical-align:middle;width:20px;height:20px">${ICONE_CLE}</span> apparaît alors à côté de leur nom pour copier la clé et la coller dans l'e-Marque.</span></div>
+  <div id="licLog" class="small">${licLogHTML}</div>
+  ${list.length ? `<div class="tbl-wrap"><table><thead><tr><th>Licencié</th><th>Licence</th><th>Catégorie</th><th title="Clé de validation de l'e-Marque (masquée)">Clé e-Marque</th><th></th></tr></thead><tbody>
+    ${shown.map(([id, l]) => `<tr><td><b>${h(String(l.nom||"").toUpperCase())}</b> ${h(l.prenom||"")}</td><td class="num">${h(l.licence||"")}</td><td class="small">${h(l.categorie||"")}</td>
+      <td data-inline><input type="password" class="clein" id="cle-${h(id)}" data-licle="${h(id)}" value="${h(l.cle || "")}" placeholder="—" autocomplete="off" aria-label="Clé de validation" style="max-width:150px"></td>
+      <td class="rd"><button class="btn sm ghost" data-lic-del="${h(id)}">Retirer</button></td></tr>`).join("")}
+  </tbody></table></div>${list.length > shown.length ? `<p class="muted small">${list.length - shown.length} autres : affinez la recherche.</p>` : ""}`
+  : `<div class="empty"><h2>${q ? "Aucun licencié trouvé" : "Aucun licencié"}</h2><p>Importez l'export des licenciés depuis FBI pour les proposer dans les cases des officiels.</p></div>`}`;
+}
+let licLogHTML = "";
+function licLog(html){ licLogHTML = html; const el = $("#licLog"); if (el) el.innerHTML = html; }
+async function lireTableur(file){
+  const n = file.name.toLowerCase();
+  if (n.endsWith(".xlsx")){ if (!api) throw new Error("Import Excel disponible dans l'application installée."); const r = await call("lire_tableur", await readB64(file)); return r.rows; }
+  if (n.endsWith(".xls")) throw new Error("Ancien format Excel : enregistrez le fichier en .xlsx ou en CSV, puis réessayez.");
+  return parseCSV(await file.text());
+}
+async function importLicencies(file){
+  licLog(`<span class="muted">Lecture du fichier…</span>`);
+  const rows = await lireTableur(file);
+  let hi = rows.slice(0, 15).findIndex(r => r.some(c => norm(c).includes("licence")) && r.some(c => norm(c).startsWith("nom")));
+  if (hi < 0) throw new Error("Colonnes « Nom » et « N° licence » introuvables dans le fichier.");
+  const hd = rows[hi].map(norm), find = f => hd.findIndex(f);
+  const ix = { nom:find(x => x === "nom" || x === "nom d usage") >= 0 ? find(x => x === "nom" || x === "nom d usage") : find(x => x.startsWith("nom") && !x.includes("club") && !x.includes("naissance")),
+    prenom:find(x => x.startsWith("prenom")), licence:find(x => x.includes("licence") && !x.includes("type") && !x.includes("date") && !x.includes("statut")), cle:find(x => x.startsWith("cle")), categorie:find(x => x.startsWith("categorie")), sexe:find(x => x === "sexe" || x === "genre") };
+  if (ix.nom < 0 || ix.licence < 0) throw new Error("Colonnes « Nom » et « N° licence » introuvables dans le fichier.");
+  const g = (r, k) => ix[k] >= 0 ? String(r[ix[k]] ?? "").trim() : "";
+  const out = [], vus = new Set();
+  for (const r of rows.slice(hi + 1)){
+    const lic = g(r, "licence").toUpperCase().replace(/\s+/g, ""), nom = g(r, "nom"); if (!lic || !nom) continue;
+    const id = "l-" + lic.replace(/[^A-Z0-9]/g, ""); if (vus.has(id)) continue; vus.add(id);
+    const old = S.licencies.get(id) || {};
+    const d = { ...old, nom, prenom:g(r, "prenom"), licence:lic, categorie:g(r, "categorie"), sexe:g(r, "sexe"), roles:old.roles || [] };
+    if (g(r, "cle")) d.cle = g(r, "cle");
+    if (JSON.stringify(d) !== JSON.stringify(old)) out.push({ collection:"licencies", id, data:d });
+  }
+  if (!vus.size) throw new Error("Aucune ligne de licencié reconnue.");
+  await writeMany(out, (d, n) => licLog(`<span class="muted num">Enregistrement : ${d}/${n}</span>`));
+  let purges = 0;
+  if ($("#licPurge")?.checked){ for (const id of [...S.licencies.keys()]) if (!vus.has(id) && id.startsWith("l-")){ try { await remove("licencies", id); purges++; } catch {} } }
+  licLog(`<div class="banner" style="background:var(--dom-soft);color:var(--dom)">${vus.size} licencié${vus.size>1?"s":""} lu${vus.size>1?"s":""}, ${out.length} ajouté${out.length>1?"s":""} ou mis à jour${purges ? `, ${purges} retiré${purges>1?"s":""}` : ""}.</div>`);
+}
+function openLicNew(){
+  openDlg(dlgShell("Ajouter un licencié", `<div class="fgrid">${fld("lNom","Nom","")}${fld("lPrenom","Prénom","")}${fld("lLic","N° de licence","")}${fld("lCat","Catégorie","")}</div>`,
+    `<span class="spacer"></span><button type="button" class="btn" data-close>Annuler</button><button type="button" class="btn primary" data-act="lic-save">Enregistrer</button>`));
+}
+
+/* ---- Export PDF des officiels d'une journée ---- */
+function groupesOff(){
+  const cols = colsOff().map(c => [c.k, c.l, !!c.req, c.type || "text", c.stack]), g = [];
+  cols.forEach(f => { if (f[4] && g.length) g[g.length-1].push(f); else g.push([f]); });
+  return g;
+}
+const titreGroupeOff = g => { const ls = g.map(f => f[1]); return ls.length > 1 && ls.every(l => norm(l) === norm(ls[0])) ? `${ls[0]} (×${ls.length})` : ls.join(" / "); };
+function matchsDomicile(){ return sortMatches([...S.matchs.entries()].filter(([, m]) => m.domicile && m.date && !isOff(m) && visibleM(m) && (!F.equipe || m.equipeId === F.equipe))); }
+function openPdfOff(){
+  const dates = [...new Set(matchsDomicile().map(([, m]) => m.date))].sort();
+  if (!dates.length){ toast("Aucun match à domicile à exporter."); return; }
+  const t = today(), def = dates.find(d => d >= t) || dates[dates.length - 1];
+  const body = `<div class="fgrid"><label class="field"><span>Journée</span><select id="pdfJour">${dates.map(d => `<option value="${d}" ${d === def ? "selected" : ""}>${h(cap(dayLabel(d)))}${d < t ? " (passé)" : ""}</option>`).join("")}</select></label>
+      <label class="field"><span>Étendue</span><select id="pdfPortee"><option value="jour">Cette journée seulement</option><option value="weekend">Tout le week-end</option></select></label></div>
+    <label class="check"><input type="checkbox" id="pdfLic" checked> Afficher les numéros de licence (utile pour l'e-Marque)</label>
+    <p class="muted small" style="margin:0">Équipes : ${F.equipe ? h(equipe(F.equipe)?.nom || "") + " (filtre en cours)" : "toutes les équipes affichées"}. Colonnes et regroupements : ceux du tableau des officiels. Le code e-Marque n'est jamais imprimé.</p>`;
+  openDlg(dlgShell("Exporter les officiels en PDF", body, `<span class="spacer"></span><button type="button" class="btn" data-close>Annuler</button><button type="button" class="btn primary" data-act="pdf-off-go">Créer le PDF</button>`));
+}
+async function pdfOff(){
+  const d0 = $("#pdfJour").value, wk = $("#pdfPortee").value === "weekend", lic = $("#pdfLic").checked;
+  const jours = wk ? [...new Set(matchsDomicile().map(([, m]) => m.date).filter(d => weekendKey(d) === weekendKey(d0)))].sort() : [d0];
+  const groupes = groupesOff(), sansLic = v => lic ? v : String(v || "").replace(/\s+[–-]\s+[A-Z]{2}\d{6}$/, "");
+  const donnees = { club:notreNom(), titre:"Officiels", sousTitre:F.equipe ? (equipe(F.equipe)?.nom || "") : "toutes les équipes",
+    colonnes:groupes.map(g => ({ titre:titreGroupeOff(g) })),
+    jours:jours.map(d => ({ label:dayLabel(d), matchs:matchsDomicile().filter(([, m]) => m.date === d).map(([, m]) => ({
+      heure:fmtH(m.heure), equipe:nomEquipe(m), adversaire:advNom(m), salle:salleNom(m),
+      roles:groupes.map(g => g.map(([k, l, req]) => ({ libelle:l, requis:req, valeur:sansLic(m[k] || "") }))) })) })) };
+  if (WEB){ closeDlg(); imprimerOfficiels(donnees); return; }
+  const logo = S.reglages.logo ? logoURL(S.reglages.logo) : "";
+  try { const r = await call("pdf_officiels", donnees, /^https:/.test(logo) ? logo : "", `officiels-${wk ? "weekend-" + weekendKey(d0) : d0}.pdf`); closeDlg(); if (r.opened) toast("PDF ouvert : imprimez-le ou enregistrez-le depuis votre lecteur PDF."); }
+  catch (e){ toast(e.message || "Le PDF n'a pas pu être créé."); }
+}
+
+/* ---- Partage « à remplir » (page publique + lien WhatsApp) ---- */
+const PAGE_DEFAUT = "https://marienroederer-stack.github.io/plannings/";
+const pagePartage = () => (S.reglages.pagePartage || PAGE_DEFAUT).replace(/#.*$/, "");
+const refBase = () => (/^https:\/\/([a-z0-9]+)\.supabase\.co/.exec(CFG.url || "") || [])[1] || "";
+let pageCourte = null;   // la page publiée connaît-elle déjà la base (config.json) ? => liens courts
+async function verifierPage(){
+  try { const c = await (await fetch(pagePartage() + "config.json?" + Date.now())).json(); pageCourte = c.ref === refBase() && c.key === CFG.key; }
+  catch { pageCourte = false; }
+  return pageCourte;
+}
+function lienPartage(token){
+  return pageCourte ? `${pagePartage()}#t=${token}` : `${pagePartage()}#p=${refBase()}&k=${encodeURIComponent(CFG.key || "")}&t=${token}`;
+}
+const messagePartage = (titre, lien) => `${titre} : on cherche des volontaires (arbitres, table de marque, buvette…). Inscrivez-vous sur un créneau libre ici :\n${lien}`;
+const configJson = () => JSON.stringify({ ref:refBase(), key:CFG.key || "" }, null, 2);
+let partagesCache = [], partagesCharges = false;
+const actifsDe = () => { const now = new Date().toISOString(); return partagesCache.filter(l => l.actif && (!l.expire_le || l.expire_le > now)); };
+const lienActif = id => actifsDe().some(l => (l.matchs || []).includes(id));
+async function chargerPartagesFond(){ if (partagesCharges || !api || S.demo || !canWrite) return; partagesCharges = true; try { const r = await call("partages"); partagesCache = r.liens || []; scheduleRender(); } catch {} }
+const titreMatch = m => `${nomEquipe(m)} reçoit ${advNom(m)}, ${m.date ? dayLabel(m.date) : "date à fixer"} à ${fmtH(m.heure)}`;
+const estArb = c => c.arb ?? (/^arbitre/.test(c.k) || norm(c.l).includes("arbitr"));
+const champsArb = () => colsOff().filter(c => c.type !== "time" && estArb(c));
+const matchsArb = () => sortMatches([...S.matchs.entries()].filter(([, m]) => m.domicile && m.date && m.date >= today() && !isOff(m) && visibleM(m)));
+async function openPartageArb(){
+  const ch = champsArb(), ms = matchsArb();
+  const body = `<div class="panel" style="display:grid;gap:4px"><span class="eyebrow">Groupe des arbitres</span><b style="font-size:17px">${ms.length} match${ms.length > 1 ? "s" : ""} à domicile à venir</b><span class="muted small">Colonnes proposées : ${ch.length ? h(ch.map(c => c.l).join(", ")) : "aucune"}</span></div>
+    ${ch.length ? "" : `<div class="lock">Aucune colonne n'est marquée « Arbitrage » : cochez-la dans Réglages › Colonnes des matchs à domicile.</div>`}
+    <p class="muted small" style="margin:0">Le lien affiche <b>tous les matchs à domicile à venir</b> des équipes affichées, y compris ceux importés plus tard, mais seulement les cases d'arbitrage. Les liens par match continuent d'afficher toutes les cases, arbitres compris.</p>
+    <label class="field" style="max-width:280px"><span>Valable</span><select id="peArbDuree"><option value="31">1 mois</option><option value="saison" selected>Jusqu'à la fin de saison</option></select></label>
+    <div id="peCourt" class="small muted"></div>
+    <div id="peResultat"></div>
+    <fieldset><legend>Liens arbitres actifs</legend><div id="peListe" class="small muted">Chargement…</div></fieldset>`;
+  openDlg(dlgShell("Partager aux arbitres", body, `<span class="spacer"></span><button type="button" class="btn" data-close>Fermer</button><button type="button" class="btn primary" data-act="partage-arb-creer" ${ch.length ? "" : "disabled"}>Créer le lien</button>`));
+  dlg.dataset.mid = ""; dlg.dataset.mode = "arb";
+  chargerPartages();
+  verifierPage().then(ok => { const el = $("#peCourt"); if (el && !ok) el.innerHTML = `<div class="lock">Les liens sont longs tant que config.json n'est pas renseigné dans le dépôt plannings.</div>`; });
+}
+function afficherLienCree(lien, msg){
+  $("#peResultat").innerHTML = `<div class="panel" style="display:grid;gap:10px;background:var(--dom-soft);border-color:transparent"><b style="color:var(--dom)">Lien créé</b>
+    <textarea id="peMsg" rows="4" readonly style="font-size:13px">${h(msg)}</textarea>
+    <div class="row"><button type="button" class="btn primary" data-act="pe-copier-msg">Copier le message</button><button type="button" class="btn" data-act="pe-whatsapp">Ouvrir dans WhatsApp</button><button type="button" class="btn ghost" data-act="pe-ouvrir">Voir la page</button></div></div>`;
+  $("#peResultat").dataset.lien = lien;
+}
+const nouveauJeton = () => Array.from(crypto.getRandomValues(new Uint8Array(12)), b => "abcdefghijkmnpqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789"[b % 56]).join("");
+const messageArb = lien => `Arbitrage club : nos matchs à domicile à venir ont besoin d'arbitres. Inscrivez-vous sur un créneau libre ici :\n${lien}`;
+async function creerPartageArb(){
+  const ch = champsArb().map(c => c.k); if (!ch.length){ toast("Cochez d'abord une colonne « Arbitrage » dans Réglages."); return; }
+  const d = $("#peArbDuree").value, exp = d === "saison" ? finSaison() : new Date(Date.now() + 31 * 864e5);
+  const eqs = sortedEquipes().filter(([, e]) => e.visible !== false).map(([id]) => id);
+  if (pageCourte === null) await verifierPage();
+  const tok = nouveauJeton();
+  try {
+    await call("partage_creer", { token:tok, titre:"Arbitrage – matchs à domicile à venir", equipes:eqs, matchs:[], champs:ch, expire_le:exp.toISOString() });
+    const lien = lienPartage(tok); afficherLienCree(lien, messageArb(lien)); chargerPartages();
+  } catch (e){ toast(/relation|partages|schema|champs|column/i.test(e.message) ? "La base n'est pas à jour : relancez supabase/schema.sql dans Supabase." : e.message); }
+}
+function finSaison(){ const d = new Date(), y = d.getMonth() >= 7 ? d.getFullYear() + 1 : d.getFullYear(); return new Date(Date.UTC(y, 6, 31, 21, 59)); }
+async function openPartage(id){
+  const m = S.matchs.get(id); if (!m) return;
+  const exp = m.date ? addDays(parseD(m.date), 1) : null;
+  const body = `<div class="panel" style="display:grid;gap:4px"><span class="eyebrow">Match partagé</span><b style="font-size:17px">${h(titreMatch(m))}</b><span class="muted small">${h(salleNom(m) || "Salle à préciser")}</span></div>
+    <p class="muted small" style="margin:0">Le lien n'affiche que ce match. Chacun s'inscrit dans une case libre, sans compte ; les noms ne peuvent pas être effacés depuis la page et les numéros de licence n'apparaissent pas. ${exp ? `Le lien expire le ${h(dayLabel(fmtD(exp)))} au soir.` : "Le lien expire dans 2 semaines."}</p>
+    <div id="peCourt" class="small muted"></div>
+    <div id="peResultat"></div>
+    <fieldset><legend>Liens actifs pour ce match</legend><div id="peListe" class="small muted">Chargement…</div></fieldset>`;
+  openDlg(dlgShell("Partager ce match", body, `<span class="spacer"></span><button type="button" class="btn" data-close>Fermer</button><button type="button" class="btn primary" data-act="partage-creer" data-mid="${h(id)}">Créer le lien</button>`));
+  dlg.dataset.mid = id; dlg.dataset.mode = "match";
+  chargerPartages();
+  verifierPage().then(ok => { const el = $("#peCourt"); if (!el || ok) return;
+    el.innerHTML = `<div class="lock" style="display:grid;gap:6px"><span>Les liens sont longs car la page publique ne connaît pas encore votre base. Pour des liens courts, collez ce contenu dans le fichier <b>config.json</b> du dépôt <b>plannings</b> sur GitHub (crayon « Edit », puis « Commit changes ») :</span><pre class="code" style="margin:0">${h(configJson())}</pre><div><button type="button" class="btn sm" data-act="pe-config">Copier ce contenu</button></div></div>`; });
+}
+async function chargerPartages(){
+  const box = $("#peListe");
+  try {
+    const r = await call("partages"); partagesCache = r.liens || []; partagesCharges = true; scheduleRender();
+    if (!box) return;
+    const mid = dlg.dataset.mid, arb = dlg.dataset.mode === "arb";
+    const liste = actifsDe().filter(l => arb ? (l.champs || []).length > 0 && !(l.matchs || []).length : (!mid || (l.matchs || []).includes(mid)));
+    box.innerHTML = liste.length ? liste.map(l => `<div class="row" style="padding:6px 0;border-bottom:1px solid var(--line)"><span>Créé le ${h(dayLabel(String(l.cree_le).slice(0, 10)))} · expire le ${h(l.expire_le ? dayLabel(l.expire_le.slice(0, 10)) : "—")}</span><span class="spacer"></span>
+        <button type="button" class="btn sm" data-pe-copier="${h(l.token)}" data-arb="${(l.champs || []).length ? 1 : ""}">Copier le message</button><button type="button" class="btn sm ghost" data-pe-revoquer="${h(l.token)}">Désactiver</button></div>`).join("") : (arb ? "Aucun lien arbitres actif." : "Aucun lien actif pour ce match.");
+  } catch (e){ if (box) box.textContent = /relation|partages|schema|matchs/i.test(e.message) ? "La base n'est pas à jour : relancez supabase/schema.sql dans Supabase (voir le README)." : e.message; }
+}
+async function creerPartage(id){
+  const m = S.matchs.get(id); if (!m) return;
+  const exp = m.date ? (() => { const d = addDays(parseD(m.date), 1); d.setHours(23, 59, 0, 0); return d; })() : new Date(Date.now() + 14 * 864e5);
+  if (pageCourte === null) await verifierPage();
+  const tok = nouveauJeton();
+  const titre = titreMatch(m);
+  try {
+    await call("partage_creer", { token:tok, titre, equipes:[m.equipeId], matchs:[id], expire_le:exp.toISOString() });
+    const lien = lienPartage(tok); afficherLienCree(lien, messagePartage(titre, lien));
+    chargerPartages();
+  } catch (e){ toast(/relation|partages|schema|matchs/i.test(e.message) ? "La base n'est pas à jour : relancez supabase/schema.sql dans Supabase." : e.message); }
+}
+async function copierTexte(txt){
+  try { await navigator.clipboard.writeText(txt); toast("Copié : collez-le dans WhatsApp"); return; } catch {}
+  try { const ta = document.createElement("textarea"); ta.value = txt; ta.style.cssText = "position:fixed;opacity:0"; (dlg.open ? dlg : document.body).appendChild(ta); ta.select(); const ok = document.execCommand("copy"); ta.remove(); if (ok){ toast("Copié : collez-le dans WhatsApp"); return; } } catch {}
+  const t = $("#peMsg"); if (t){ t.focus(); t.select(); } toast("Texte sélectionné : faites Ctrl+C pour le copier.");
+}
+
+/* ---- Saisie assistée des officiels ---- */
+const AC = { input:null, items:[], idx:-1, box:null };
+function acMatches(q){
+  q = norm(q); if (q.length < 2) return [];
+  const mots = q.split(" ");
+  return [...S.licencies.values()].map(l => ({ l, t:norm(`${l.prenom} ${l.nom} ${l.nom} ${l.licence}`) }))
+    .filter(x => mots.every(m => x.t.includes(m)))
+    .sort((a, b) => (norm(b.l.nom).startsWith(q) || norm(b.l.prenom).startsWith(q) ? 1 : 0) - (norm(a.l.nom).startsWith(q) || norm(a.l.prenom).startsWith(q) ? 1 : 0) || String(a.l.nom).localeCompare(String(b.l.nom), "fr"))
+    .slice(0, 8).map(x => x.l);
+}
+function acClose(){ AC.box?.remove(); AC.box = null; AC.items = []; AC.idx = -1; }
+function acOpen(input){
+  AC.input = input; AC.items = acMatches(input.value); AC.idx = -1;
+  if (!AC.items.length){ acClose(); return; }
+  if (!AC.box){ AC.box = document.createElement("div"); AC.box.className = "ac-box"; AC.box.setAttribute("role", "listbox"); }
+  (input.closest("dialog") || document.body).appendChild(AC.box);
+  acPlace(); acPaint();
+}
+function acPaint(){
+  if (!AC.box) return;
+  AC.box.innerHTML = AC.items.map((l, i) => `<div class="ac-it ${i === AC.idx ? "on" : ""}" data-ac="${i}" role="option"><b>${h(String(l.nom||"").toUpperCase())}</b> ${h(l.prenom||"")}<span class="muted small num"> ${h(l.licence||"")}${l.categorie ? " · " + h(l.categorie) : ""}</span></div>`).join("")
+    + `<div class="ac-foot muted small">Entrée sans sélection : garder « ${h(AC.input.value)} »</div>`;
+}
+function acValider(input, l){
+  if (l) input.value = licLabel(l);
+  acClose();
+  input.dispatchEvent(new Event("change", { bubbles:true }));
+}
+document.addEventListener("input", e => { if (e.target.dataset?.lic) acOpen(e.target); });
+document.addEventListener("keydown", e => {
+  const t = e.target; if (!t.dataset?.lic) return;
+  if (e.key === "ArrowDown" && AC.items.length){ e.preventDefault(); AC.idx = (AC.idx + 1) % AC.items.length; acPaint(); }
+  else if (e.key === "ArrowUp" && AC.items.length){ e.preventDefault(); AC.idx = AC.idx <= 0 ? AC.items.length - 1 : AC.idx - 1; acPaint(); }
+  else if (e.key === "Enter"){ e.preventDefault(); acValider(t, AC.idx >= 0 ? AC.items[AC.idx] : null); }
+  else if (e.key === "Escape" && AC.box){ e.preventDefault(); e.stopPropagation(); acClose(); }
+}, true);
+document.addEventListener("mousedown", e => { const it = e.target.closest?.(".ac-it"); if (it && AC.input){ e.preventDefault(); acValider(AC.input, AC.items[+it.dataset.ac]); } });
+document.addEventListener("focusout", e => { if (e.target.dataset?.lic) setTimeout(() => { if (document.activeElement !== AC.input) acClose(); }, 120); });
+function acPlace(){
+  if (!AC.box || !AC.input) return;
+  const r = AC.input.getBoundingClientRect(), w = Math.max(r.width, 280);
+  AC.box.style.left = Math.max(8, Math.min(r.left, innerWidth - w - 8)) + "px"; AC.box.style.width = w + "px";
+  const below = innerHeight - r.bottom > 260; AC.box.style.top = below ? (r.bottom + 2) + "px" : ""; AC.box.style.bottom = below ? "" : (innerHeight - r.top + 2) + "px";
+}
+window.addEventListener("scroll", e => { if (!AC.box || AC.box.contains(e.target)) return; if (document.activeElement === AC.input && AC.input.isConnected) acPlace(); else acClose(); }, true);
+window.addEventListener("resize", () => acPlace());
+
+/* ---- Réglages ---- */
+function colsEditor(kind){
+  const cols = kind === "off" ? colsOff() : colsDep(), dis = canWrite ? "" : "disabled";
+  return `<div class="tbl-wrap"><table><thead><tr><th>Intitulé de la colonne</th><th>Obligatoire</th><th>Sous la précédente</th>${kind === "off" ? `<th title="Colonnes proposées dans le lien « Partager aux arbitres »">Arbitrage</th><th title="Bouton pour copier le n° de licence de la personne saisie">N° licence</th>` : ""}<th>Type</th><th></th></tr></thead><tbody>
+    ${cols.map((c, i) => `<tr><td><input type="text" id="col-${kind}-${i}" data-col="${kind}" data-i="${i}" data-prop="l" value="${h(c.l)}" ${dis}></td>
+      <td><label class="row small"><input type="checkbox" data-col="${kind}" data-i="${i}" data-prop="req" ${c.req ? "checked" : ""} ${dis}> à pourvoir</label></td>
+      <td><label class="row small"><input type="checkbox" data-col="${kind}" data-i="${i}" data-prop="stack" ${c.stack ? "checked" : ""} ${dis || (i ? "" : "disabled")}> même colonne</label></td>${kind === "off" ? `
+      <td><label class="row small"><input type="checkbox" data-col="${kind}" data-i="${i}" data-prop="arb" ${estArb(c) ? "checked" : ""} ${dis}> lien arbitres</label></td>
+      <td><label class="row small"><input type="checkbox" data-col="${kind}" data-i="${i}" data-prop="lic" ${estLicCol(c) ? "checked" : ""} ${dis}> copier</label></td>` : ""}
+      <td><select data-col="${kind}" data-i="${i}" data-prop="type" ${dis || (c.fixe ? "disabled" : "")}><option value="text" ${c.type !== "time" ? "selected" : ""}>Texte</option><option value="time" ${c.type === "time" ? "selected" : ""}>Heure</option></select></td>
+      <td class="rd">${canWrite ? `<button class="btn sm ghost" data-colmove="${kind}" data-i="${i}" data-d="-1" ${i ? "" : "disabled"} aria-label="Monter">↑</button><button class="btn sm ghost" data-colmove="${kind}" data-i="${i}" data-d="1" ${i < cols.length-1 ? "" : "disabled"} aria-label="Descendre">↓</button>${c.fixe ? "" : `<button class="btn sm ghost" data-coldel="${kind}" data-i="${i}">Retirer</button>`}` : ""}</td></tr>`).join("")}
+  </tbody></table></div>
+  ${canWrite ? `<div class="row"><input type="text" id="newcol-${kind}" placeholder="ex. Photographe, Buvette…" style="max-width:300px"><button class="btn" data-coladd="${kind}">+ Ajouter la colonne</button><span class="spacer"></span><button class="btn ghost sm" data-colreset="${kind}">Rétablir les colonnes par défaut</button></div>` : ""}`;
+}
+function vReglages(){
+  const dis = canWrite ? "" : "disabled";
+  const teams = sortedEquipes().map(([id, e]) => `<tr><td><span class="chip" style="--c:${h(e.couleur||"var(--muted)")}"><i></i>${h(e.nom)}</span></td><td class="muted small">${h(e.categorie || "")}</td>
+    <td><span class="row"><input type="number" id="dur-${h(id)}" data-duree="${h(id)}" min="30" max="240" step="5" value="${h(e.duree || "")}" placeholder="${h(S.reglages.dureeMatch || 105)}" style="width:90px" ${dis}> <span class="muted small">min</span></span></td></tr>`).join("");
+  return `<div class="field"><h2 style="font-size:24px">Réglages</h2>${canWrite ? "" : `<span class="muted small" style="font-weight:400">Consultation seule : seuls les éditeurs modifient ces réglages.</span>`}</div>
+  ${vEquipesVisibles()}
+  <section class="panel" style="display:grid;gap:12px"><span class="eyebrow">Officiels et table de marque</span><h3 style="font-size:20px">Colonnes des matchs à domicile</h3>
+    <p class="muted small" style="margin:0">Renommez, réordonnez ou ajoutez des colonnes. Cochez « Sous la précédente » pour empiler une colonne sous celle du dessus (deux arbitres, deux personnes à la buvette…) et garder un tableau étroit. Les colonnes « à pourvoir » apparaissent en orange tant qu'elles sont vides et comptent dans les pastilles du planning. Retirer une colonne la masque sans effacer ce qui a été saisi.</p>${colsEditor("off")}</section>
+  <section class="panel" style="display:grid;gap:12px"><span class="eyebrow">Déplacements</span><h3 style="font-size:20px">Colonnes des matchs à l'extérieur</h3>${colsEditor("dep")}</section>
+  <section class="panel" style="display:grid;gap:10px"><span class="eyebrow">Partage</span><h3 style="font-size:20px">Page publique d'inscription</h3>
+    <p class="muted small" style="margin:0">Adresse de la page ouverte par les liens « Partager à remplir » (dépôt GitHub plannings, GitHub Pages).</p>
+    <input type="text" id="rPage" value="${h(S.reglages.pagePartage || PAGE_DEFAUT)}" ${dis} style="max-width:520px"></section>
+  <section class="panel" style="display:grid;gap:12px"><span class="eyebrow">Salles</span><h3 style="font-size:20px">Durée d'occupation de la salle</h3>
+    <p class="muted small" style="margin:0">Temps réservé pour un match, échauffement compris. Sert à détecter les chevauchements dans l'onglet Salles. Laissez une équipe vide pour utiliser la durée par défaut.</p>
+    <label class="field" style="max-width:260px"><span>Durée par défaut</span><span class="row"><input type="number" id="dureeMatch" min="30" max="240" step="5" value="${h(S.reglages.dureeMatch || 105)}" style="width:90px" ${dis}> <span class="muted small">minutes</span></span></label>
+    ${teams ? `<div class="tbl-wrap"><table><thead><tr><th>Équipe</th><th>Catégorie</th><th>Durée</th></tr></thead><tbody>${teams}</tbody></table></div>` : `<p class="muted small">Aucune équipe pour l'instant.</p>`}</section>`;
+}
+function vEquipesVisibles(){
+  const groups = new Map(); for (const [id, e] of sortedEquipes()){ const k = e.clubId || ""; if (!groups.has(k)) groups.set(k, []); groups.get(k).push([id, e]); }
+  if (!groups.size) return "";
+  const keys = [...groups.keys()].sort((a, b) => (a === "" ? -1 : b === "" ? 1 : clubDe(groups.get(a)[0][1]).localeCompare(clubDe(groups.get(b)[0][1]), "fr")));
+  const dis = canWrite ? "" : "disabled";
+  return `<section class="panel" style="display:grid;gap:14px"><span class="eyebrow">Plannings</span><h3 style="font-size:20px">Équipes affichées</h3>
+    <p class="muted small" style="margin:0">Les équipes décochées n'apparaissent nulle part (planning, salles, officiels, déplacements, affiche), mais restent mises à jour à chaque import. Les équipes des clubs de la CTC arrivent décochées.</p>
+    ${keys.map(k => { const arr = groups.get(k), nom = k ? clubDe(arr[0][1]) : notreNom(), nOn = arr.filter(([, e]) => e.visible !== false).length;
+      return `<div style="display:grid;gap:8px"><div class="row"><b>${h(nom)}</b><span class="muted small num">${nOn}/${arr.length} affichée${nOn>1?"s":""}</span><span class="spacer"></span>${canWrite ? `<button class="btn sm ghost" data-vis="*" data-club="${h(k)}" data-on="1">Tout cocher</button><button class="btn sm ghost" data-vis="*" data-club="${h(k)}" data-on="0">Tout décocher</button>` : ""}</div>
+        <div class="grid-cards" style="grid-template-columns:repeat(auto-fill,minmax(190px,1fr))">${arr.map(([id, e]) => `<label class="card" style="cursor:${canWrite ? "pointer" : "default"}"><input type="checkbox" id="vis-${h(id)}" data-visbox="${h(id)}" ${e.visible !== false ? "checked" : ""} ${dis}><span class="chip" style="--c:${h(e.couleur||"var(--muted)")}"><i></i>${h(e.nom)}</span><span class="muted small" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0">${h(e.categorie || "")}</span></label>`).join("")}</div></div>`; }).join("")}
+  </section>`;
+}
+async function saveCols(kind, cols){ await saveReglages(kind === "off" ? { colsOfficiels:cols } : { colsDeplacements:cols }); }
+const colsCopy = kind => (kind === "off" ? colsOff() : colsDep()).map(c => ({ ...c }));
+
+/* ---- Club & logos ---- */
+function vClubs(){
+  const r = S.reglages, q = norm(LS.get("qclub", ""));
+  const list = [...S.clubs.entries()].filter(([, c]) => !q || norm(c.nom + " " + (c.ville||"")).includes(q)).sort((a,b) => String(a[1].nom).localeCompare(String(b[1].nom), "fr"));
+  const used = new Map(); for (const m of S.matchs.values()) if (m.adversaireClubId) used.set(m.adversaireClubId, (used.get(m.adversaireClubId)||0) + 1);
+  const noLogo = [...S.clubs.values()].filter(c => !c.logo).length;
+  return `<section class="panel two">
+    <div class="row" style="align-items:flex-start;gap:16px">${usLogo(84)}<div style="display:grid;gap:6px;min-width:0;flex:1"><span class="eyebrow">Notre club</span><h2 style="font-size:28px">${h(r.nom || "Nom du club à renseigner")}</h2><span class="muted small">${r.ffbbId ? "N° FFBB " + h(r.ffbbId) : "Numéro FFBB non renseigné"}</span>
+      ${canWrite ? `<div class="row"><label class="btn sm" for="upOurLogo">Changer le logo</label>${r.logo ? `<button class="btn sm" data-act="cadre-notre">Ajuster le cadrage</button>` : ""}<input type="file" id="upOurLogo" accept="image/png,image/jpeg,image/webp,image/svg+xml" hidden></div>` : ""}</div></div>
+    ${canWrite ? `<form id="formClub" class="fgrid" style="align-content:start">
+      <label class="field"><span>Nom du club</span><input type="text" id="rNom" value="${h(r.nom||"")}" placeholder="ex. BC Paris 15"></label>
+      <label class="field"><span>N° club FFBB</span><input type="text" id="rFfbb" value="${h(r.ffbbId||"")}" placeholder="ex. 12345"></label>
+      <label class="field"><span>Couleur du club</span><input type="color" id="rCouleur" value="${h(r.couleur||"#d4561c")}" style="height:38px;padding:2px;width:100%;border:1px solid var(--line);border-radius:8px;background:var(--surface)"></label>
+      <div class="field" style="align-self:end"><button class="btn primary" type="submit">Enregistrer</button></div></form>` : ""}
+  </section>
+  <div class="toolbar"><div class="field grow"><h2 style="font-size:24px">Bibliothèque des clubs</h2><span class="muted small" style="font-weight:400">${S.clubs.size} club${S.clubs.size>1?"s":""}${noLogo ? ` · ${noLogo} sans logo` : ""}</span></div>
+    <label class="field"><span>Rechercher</span><input type="search" id="qClub" value="${h(LS.get("qclub",""))}" placeholder="Nom ou ville"></label>
+    ${canWrite ? `<button class="btn primary" data-edit-club="">+ Ajouter un club</button>` : ""}</div>
+  ${list.length ? `<div class="grid-cards">${list.map(([id, c]) => `<button class="card" ${canWrite ? `data-edit-club="${h(id)}"` : ""}>${logoHTML(c, 44)}<span class="t"><b>${h(c.nom)}</b><span class="muted small">${h(c.ville||"")}${used.get(id) ? `${c.ville ? " · " : ""}${used.get(id)} match${used.get(id)>1?"s":""}` : ""}${!c.logo ? ` · <span style="color:var(--warn)">sans logo</span>` : ""}</span></span></button>`).join("")}</div>`
+    : `<div class="empty"><h2>${q ? "Aucun club trouvé" : "Bibliothèque vide"}</h2><p>Les clubs adverses sont ajoutés à l'import FFBB, avec leur logo quand la fédération le fournit. Vous pouvez aussi les créer et déposer un logo vous-même.</p></div>`}`;
+}
+
+/* ---- Import / export ---- */
+function vDonnees(){
+  const wks = weekendsAvailable(), t = weekendKey(today()), def = wks.find(k => k >= t) || wks[wks.length-1] || "";
+  return `<div class="two">
+  <section class="panel" style="display:grid;gap:12px;align-content:start"><span class="eyebrow">Importer</span><h2 style="font-size:24px">Depuis la FFBB</h2>
+    <p class="muted" style="margin:0">Récupère toutes les équipes du club (jeunes et seniors), leurs matchs de la saison, les salles et les logos. Relancez quand vous voulez : les données FFBB font foi et remplacent les modifications manuelles, sauf celles que vous avez figées. Le compte rendu liste ce qui a été remplacé.</p>
+    ${WEB ? `<p class="lock" style="margin:0">L'import FFBB se fait depuis l'application PC (Windows). Les matchs importés apparaissent ici aussitôt.</p>` : ""}
+    ${canWrite && !WEB ? `${ctcClubs().length ? `<div style="display:grid;gap:6px"><span class="eyebrow" style="font-size:12px">Clubs importés</span>${ctcClubs().map(c => `<div class="row small"><span class="badge ${c.principal ? "b-dom" : "b-neutral"}">${c.principal ? "Principal" : "CTC"}</span><b>${h(c.nom || "Club")}</b><span class="muted num">n° ${h(c.ffbbId)}</span>${c.principal ? "" : `<button class="btn sm ghost" data-ctc-del="${h(c.ffbbId)}">Retirer</button>`}</div>`).join("")}</div>
+      <div class="row"><button class="btn primary" data-act="ffbb-maj">Mettre à jour depuis la FFBB</button></div>` : ""}
+      <div style="display:grid;gap:8px;justify-items:start"><input type="search" id="ffbbQ" placeholder="Nom ou ville du club" value="${ctcClubs().length ? "" : h(S.reglages.nom || "")}"><button class="btn ${ctcClubs().length ? "" : "primary"}" data-act="ffbb-search">${ctcClubs().length ? "Chercher un club de la CTC" : "Chercher mon club"}</button></div>
+      <label class="check"><input type="checkbox" id="ffbbLogos" checked> Récupérer les logos des clubs</label>
+      <label class="check"><input type="checkbox" id="ffbbLogosMaj"> Remplacer les logos déjà importés de la FFBB (ceux déposés à la main sont gardés)</label>
+      <div id="ffbbResults" style="display:grid;gap:6px"></div>
+      <details><summary class="small muted" style="cursor:pointer">Importer un fichier planning_ffbb.json</summary><label class="btn sm" for="upJson" style="margin-top:8px">Choisir le fichier</label><input type="file" id="upJson" accept=".json,application/json" hidden></details>`
+    : WEB ? "" : `<p class="muted small">L'import est réservé aux administrateurs.</p>`}
+    <div id="importLog" class="small">${importLogHTML}</div>
+    ${(() => { const l = sortMatches([...S.matchs.entries()].filter(([, m]) => visibleM(m) && ecarts(m).length)); return l.length ? `<div style="display:grid;gap:6px"><span class="eyebrow" style="font-size:12px;color:var(--warn)">Écarts avec la FFBB (${l.length})</span>${l.slice(0, 30).map(([id, m]) => `<button class="card" data-open="${h(id)}" style="padding:7px 10px"><span class="t"><b>${h(nomEquipe(m))} · ${h(m.date ? dayLabel(m.date) : "?")}</b><span class="muted small">${h(ecarts(m).map(e => `${e.l} : ${e.nous} / FFBB ${e.ffbb}${e.fige ? " (figé)" : ""}`).join(" · "))}</span></span></button>`).join("")}</div>` : ""; })()}
+    <hr style="border:0;border-top:1px solid var(--line);width:100%">
+    <h3 style="font-size:19px">Depuis un tableau (CSV)</h3>
+    <p class="muted small" style="margin:0">Une ligne par match, séparateur point-virgule ou virgule. Colonnes reconnues :</p>
+    <pre class="code">date;heure;equipe;adversaire;lieu;salle;competition;journee
+14/11/2026;14:00;U11 M1;BC Voisin;D;Gymnase Jean Moulin;U11 Départemental;5</pre>
+    <p class="muted small" style="margin:0">Lieu : D (domicile) ou E (extérieur). Équipes, clubs et salles inconnus sont créés.</p>
+    ${canWrite ? `<label class="btn" for="upCsv" style="justify-self:start">Choisir un fichier CSV</label><input type="file" id="upCsv" accept=".csv,text/csv,text/plain" hidden>` : ""}
+  </section>
+  <section class="panel" style="display:grid;gap:12px;align-content:start"><span class="eyebrow">Diffuser</span><h2 style="font-size:24px">Affiche du week-end</h2>
+    <p class="muted" style="margin:0">Une image prête à envoyer aux parents ou à publier : matchs à domicile et à l'extérieur, logos, horaires et salles.</p>
+    <div class="toolbar"><label class="field grow"><span>Week-end</span><select id="afWk">${wks.map(k => `<option value="${k}" ${k === def ? "selected" : ""}>${h(weekendLabel(k))}</option>`).join("")}</select></label>
+      <label class="field"><span>Matchs</span><select id="afLieu"><option value="tous">Tous</option><option value="dom">Domicile</option><option value="ext">Extérieur</option></select></label></div>
+    <canvas id="afCanvas" class="preview" width="1080" height="1350"></canvas>
+    <div class="row"><button class="btn primary" data-act="dl-affiche">Enregistrer l'image</button></div>
+  </section>
+  <section class="panel" style="display:grid;gap:12px;align-content:start"><span class="eyebrow">Exporter</span><h2 style="font-size:24px">Tableaux et sauvegarde</h2>
+    <p class="muted" style="margin:0">Le CSV s'ouvre dans Excel ou LibreOffice. La sauvegarde complète permet de tout restaurer.</p>
+    <div class="row"><button class="btn" data-act="dl-csv">Planning en CSV</button><button class="btn" data-act="dl-backup">Sauvegarde complète (JSON)</button></div>
+    ${canWrite && !S.demo ? `<label class="btn ghost" for="upBackup" style="justify-self:start">Restaurer une sauvegarde…</label><input type="file" id="upBackup" accept=".json,application/json" hidden>` : ""}
+  </section></div>`;
+}
+function afterDonnees(){ drawAffiche(); }
+
+/* ============ Dialogues d'édition ============ */
+const dlg = $("#dlg");
+function openDlg(html){ dlg.innerHTML = html; try { dlg.showModal(); } catch { dlg.setAttribute("open", ""); } }
+function closeDlg(){ try { dlg.close(); } catch { dlg.removeAttribute("open"); } }
+dlg.addEventListener("click", e => { if (e.target === dlg) closeDlg(); });
+const dlgShell = (title, body, foot) => `<form class="dlg" method="dialog" id="dlgForm"><div class="dlg-h"><h2>${title}</h2><button type="button" class="btn ghost" data-close aria-label="Fermer">✕</button></div><div class="dlg-b">${body}</div><div class="dlg-f">${foot}</div></form>`;
+const fld = (id, label, val, type = "text", extra = "") => `<label class="field"><span>${label}</span><input type="${type}" id="${id}" value="${h(val ?? "")}" ${canWrite ? "" : "disabled"} ${extra}></label>`;
+
+function clubDatalist(){ return `<datalist id="dlClubs">${[...S.clubs.values()].map(c => `<option value="${h(c.nom)}">`).join("")}</datalist><datalist id="dlSalles">${[...S.salles.values()].map(s => `<option value="${h(s.nom)}">`).join("")}</datalist>`; }
+
+function openMatch(id){
+  const m = id ? { ...S.matchs.get(id) } : { date:"", heure:"", domicile:true, statut:"prevu", equipeId:F.equipe || "" };
+  if (id && !S.matchs.has(id)) return;
+  const isF = m.source === "ffbb", tf = l => isF ? `${l} <span class="tag-ffbb">FFBB</span>` : l, ff = isF ? 'data-ffbb-field="1"' : "";
+  const ec = ecarts(m), legacy = !m.ffbb && (m.verrous || []).length;
+  const body = `${clubDatalist()}
+    ${m.source === "ffbb" ? `<div class="ffbb-info">Match importé de la FFBB${m.ffbbNumero ? " (n° " + h(m.ffbbNumero) + ")" : ""}. Les champs marqués <span class="tag-ffbb">FFBB</span> sont les données officielles : ils sont remis à jour à chaque import.</div>
+      ${ec.length ? `<div class="lock" style="display:grid;gap:6px"><b>Écart avec la FFBB</b>${ec.map(e => `<span>${h(e.l)} : ici <b>${h(e.nous)}</b>, FFBB <b>${h(e.ffbb)}</b>${e.fige ? " · figé (conservé aux imports)" : " · sera remplacé au prochain import"}</span>`).join("")}</div>` : ""}
+      ${legacy ? `<div class="lock">Modifications faites avec une version précédente : elles seront remplacées par la FFBB au prochain import.</div>` : ""}
+      ${canWrite ? `<div class="lock" id="ffbbWarn" hidden style="display:grid;gap:8px"><span><b>Vous modifiez une donnée officielle FFBB.</b> Sans autre action, elle sera remplacée par la valeur FFBB au prochain import. Pensez à signaler l'erreur à la FFBB ou au comité si la FFBB n'est pas à jour.</span>
+        <label class="check"><input type="checkbox" id="mFiger"> Figer ma modification : la conserver aux prochains imports (un badge « Écart FFBB » restera affiché)</label></div>` : ""}` : ""}
+    <fieldset><legend>Rencontre</legend><div class="fgrid">
+      <label class="field"><span>Équipe</span><select id="mEquipe" ${canWrite ? "" : "disabled"}>${equipeOptions(m.equipeId, "— choisir —")}</select></label>
+      ${fld("mDate",tf("Date"),m.date,"date",ff)}${fld("mHeure",tf("Heure"),m.heure,"time",ff)}
+      <label class="field"><span>${tf("Lieu")}</span><select id="mDom" ${ff} ${canWrite ? "" : "disabled"}><option value="1" ${m.domicile ? "selected" : ""}>Domicile</option><option value="0" ${!m.domicile ? "selected" : ""}>Extérieur</option></select></label>
+      ${fld("mAdv",tf("Adversaire"),advBrut(m),"text",'list="dlClubs" placeholder="Nom du club adverse" ' + ff)}
+      ${fld("mSalle",tf("Salle"),salleNom(m),"text",'list="dlSalles" ' + ff)}
+      ${fld("mComp",tf("Compétition"),m.competition,"text",ff)}${fld("mJournee",tf("Journée"),m.journee,"text",ff)}
+      <label class="field"><span>${tf("Statut")}</span><select id="mStatut" ${ff} ${canWrite ? "" : "disabled"}>${Object.entries(STATUTS).map(([k,[l]]) => `<option value="${k}" ${(m.statut||"prevu") === k ? "selected" : ""}>${l}</option>`).join("")}</select></label>
+      ${fld("mScoreNous",tf("Score " + h(notreNom())),m.scoreNous,"number",'min="0" ' + ff)}${fld("mScoreEux",tf("Score adversaire"),m.scoreEux,"number",'min="0" ' + ff)}
+    </div></fieldset>
+    ${canWrite ? `<fieldset><legend>Code de match (e-Marque)</legend><div class="row"><input type="password" id="mCode" data-mid="${h(id || "")}" value="${h(S.codes.get(id)?.code || "")}" placeholder="Connu quelques jours avant le match" autocomplete="off" style="max-width:280px"><button type="button" class="cle-btn" data-copiecode="${h(id || "")}" title="Copier le code de match" aria-label="Copier le code de match" style="width:34px;height:34px">${ICONE_CLE}</button><button type="button" class="btn sm" data-act="code-voir">Afficher</button><span class="muted small">Visible uniquement par les administrateurs et utilisateurs, jamais exporté.</span></div></fieldset>` : ""}
+    <fieldset><legend>Officiels et table de marque</legend><div class="fgrid">${colsOff().map(c => { const f = fld("o_"+c.k, h(c.l), m[c.k], c.type || "text", c.type === "time" ? "" : `data-lic="1" autocomplete="off"`), kb = canWrite && c.type !== "time" ? boutonsOff(m[c.k], c) : "";
+      return kb ? f.replace(/(<input[^>]*>)/, `<div class="avec-cle">$1${kb}</div>`) : f; }).join("")}</div></fieldset>
+    <fieldset><legend>Déplacement</legend><div class="fgrid">${colsDep().map(c => fld("t_"+c.k, h(c.l), m[c.k], c.type || "text")).join("")}</div></fieldset>
+    <label class="field"><span>Notes</span><textarea id="mNotes" ${canWrite ? "" : "disabled"}>${h(m.notes||"")}</textarea></label>`;
+  const foot = canWrite ? `${id ? `<button type="button" class="btn danger" data-del-match="${h(id)}">Supprimer</button>` : ""}${ec.length || legacy ? `<button type="button" class="btn ghost" data-unlock="${h(id)}">Reprendre les valeurs FFBB</button>` : ""}<span class="spacer"></span><button type="button" class="btn" data-close>Annuler</button><button type="button" class="btn primary" data-save-match="${h(id||"")}">Enregistrer</button>` : `<span class="spacer"></span><button type="button" class="btn" data-close>Fermer</button>`;
+  openDlg(dlgShell(id ? `${h(nomEquipe(m))} – ${h(advNom(m))}` : "Nouveau match", body, foot));
+}
+async function ensureClubByName(name){
+  const n = norm(name); if (!n) return "";
+  for (const [id, c] of S.clubs) if (norm(c.nom) === n) return id;
+  const id = uid("c"); await write("clubs", id, { nom:name.trim() }); return id;
+}
+async function ensureSalleByName(name, nous){
+  const n = norm(name); if (!n) return "";
+  for (const [id, s] of S.salles) if (norm(s.nom) === n) return id;
+  const id = uid("s"); await write("salles", id, { nom:name.trim(), nous:!!nous }); return id;
+}
+async function saveMatch(id){
+  const old = id ? S.matchs.get(id) || {} : {};
+  const v = k => $("#"+k)?.value ?? "";
+  const advName = v("mAdv").trim(), salName = v("mSalle").trim(), dom = v("mDom") === "1";
+  const m = { ...old,
+    equipeId:v("mEquipe"), date:v("mDate"), heure:v("mHeure"), domicile:dom, statut:v("mStatut") || "prevu",
+    competition:v("mComp").trim(), journee:v("mJournee").trim(), scoreNous:v("mScoreNous"), scoreEux:v("mScoreEux"),
+    notes:v("mNotes").trim(), maj:new Date().toISOString() };
+  for (const c of colsOff()) m[c.k] = v("o_"+c.k).trim();
+  for (const c of colsDep()) m[c.k] = v("t_"+c.k).trim();
+  if (!m.equipeId){ toast("Choisissez une équipe."); return; }
+  if (norm(advName) !== norm(advBrut(old))){ m.adversaireClubId = advName ? await ensureClubByName(advName) : ""; m.adversaireNom = advName; }
+  if (norm(salName) !== norm(salleNom(old))){ m.salleId = salName ? await ensureSalleByName(salName, dom) : ""; m.salleNom = salName; }
+  if (!id){ m.source = "manuel"; }
+  if (old.source === "ffbb"){
+    const figes = new Set(old.figes || []);
+    const changes = FFBB_GROUPES.filter(([, fs]) => fs.some(f => sv(old[f]) !== sv(m[f]))).map(([g]) => g);
+    if ($("#mFiger")?.checked) changes.forEach(g => figes.add(g));
+    // un champ revenu à la valeur FFBB n'a plus besoin d'être figé
+    if (m.ffbb) for (const [g, fs] of FFBB_GROUPES) if (fs.every(f => sv(m[f]) === sv(m.ffbb[f]))) figes.delete(g);
+    m.figes = [...figes]; delete m.verrous;
+  }
+  const mid = id || uid("m");
+  try {
+    await write("matchs", mid, m);
+    const code = $("#mCode") ? $("#mCode").value.trim() : null;
+    if (code !== null && code !== (S.codes.get(mid)?.code || "")){ if (code) await write("codes", mid, { code, maj:new Date().toISOString() }); else if (S.codes.has(mid)) await remove("codes", mid); }
+    closeDlg(); toast("Match enregistré");
+  } catch {}
+}
+function openTeam(id){
+  const e = id ? S.equipes.get(id) : { couleur:"#5a6476" };
+  const body = `<div class="fgrid">${fld("tNom","Nom de l'équipe",e.nom,"text",'placeholder="ex. U13 F1"')}${fld("tCat","Catégorie / niveau",e.categorie,"text",'placeholder="ex. U13 Féminines D2"')}${fld("tCoach","Coach",e.coach)}${fld("tDuree","Durée d'un match (min)",e.duree,"number",'min="40" max="240" placeholder="par défaut"')}${fld("tOrdre","Ordre d'affichage",e.ordre,"number")}
+    <label class="field"><span>Couleur</span><input type="color" id="tCouleur" value="${h(e.couleur||"#5a6476")}" style="height:38px;padding:2px;width:100%;border:1px solid var(--line);border-radius:8px;background:var(--surface)"></label></div>`;
+  const nb = id ? [...S.matchs.values()].filter(m => m.equipeId === id).length : 0;
+  openDlg(dlgShell(id ? "Modifier l'équipe" : "Nouvelle équipe", body, `${id && !nb ? `<button type="button" class="btn danger" data-del="equipes" data-id="${h(id)}">Supprimer</button>` : ""}<span class="spacer"></span><button type="button" class="btn" data-close>Annuler</button><button type="button" class="btn primary" data-save-team="${h(id||"")}">Enregistrer</button>`));
+}
+async function saveTeam(id){
+  const v = k => $("#"+k).value.trim();
+  if (!v("tNom")){ toast("Donnez un nom à l'équipe."); return; }
+  const old = id ? S.equipes.get(id) : {};
+  const e = { ...old, nom:v("tNom"), categorie:v("tCat"), coach:v("tCoach"), couleur:$("#tCouleur").value, duree:v("tDuree") ? +v("tDuree") : "", ordre:v("tOrdre") === "" ? "" : +v("tOrdre") };
+  if (old.ffbbNom && e.nom !== old.ffbbNom) e.nomManuel = true;
+  try { await write("equipes", id || uid("e"), e); closeDlg(); toast("Équipe enregistrée"); } catch {}
+}
+function openSalle(id){
+  const s = id ? S.salles.get(id) : {};
+  const body = `<div class="fgrid">${fld("sNom","Nom",s.nom)}${fld("sAdr","Adresse",s.adresse)}${fld("sVille","Ville",s.ville)}
+    <label class="field"><span>Salle du club</span><select id="sNous"><option value="1" ${s.nous ? "selected" : ""}>Oui</option><option value="0" ${!s.nous ? "selected" : ""}>Non (salle adverse)</option></select></label></div>`;
+  openDlg(dlgShell(id ? "Modifier la salle" : "Nouvelle salle", body, `<span class="spacer"></span><button type="button" class="btn" data-close>Annuler</button><button type="button" class="btn primary" data-save-salle="${h(id||"")}">Enregistrer</button>`));
+}
+async function saveSalle(id){
+  const v = k => $("#"+k).value.trim(); if (!v("sNom")){ toast("Donnez un nom à la salle."); return; }
+  try { await write("salles", id || uid("s"), { ...(id ? S.salles.get(id) : {}), nom:v("sNom"), adresse:v("sAdr"), ville:v("sVille"), nous:$("#sNous").value === "1" }); closeDlg(); toast("Salle enregistrée"); } catch {}
+}
+function openClub(id){
+  const c = id ? S.clubs.get(id) : {};
+  const body = `${c.logo ? cadreEditor(c.logo, c.logoCadre, c.nom) : ""}<div class="row" style="gap:16px">${c.logo ? "" : logoHTML(c.nom ? c : { nom:"?" }, 64)}<div style="display:grid;gap:8px">${canWrite ? `<label class="btn sm" for="clubLogo">${c.logo ? "Remplacer le logo" : "Déposer un logo"}</label><input type="file" id="clubLogo" accept="image/png,image/jpeg,image/webp,image/svg+xml" hidden>` : ""}<span class="muted small" id="clubLogoInfo">PNG, JPG, WebP ou SVG.</span></div></div>
+    <div class="fgrid">${fld("cNom","Nom du club",c.nom)}${fld("cVille","Ville",c.ville)}${fld("cFfbb","N° FFBB",c.ffbbId)}</div>`;
+  openDlg(dlgShell(id ? "Modifier le club" : "Nouveau club", body, `<span class="spacer"></span><button type="button" class="btn" data-close>Annuler</button><button type="button" class="btn primary" data-save-club="${h(id||"")}">Enregistrer</button>`));
+  dlg.dataset.pendingLogo = "";
+}
+function cadreEditor(logo, cad, nom){
+  cad = cad || {}; const v = (k, d) => cad[k] ?? d;
+  return `<fieldset><legend>Cadrage du logo</legend><div class="cadre-edit"><div id="cadrePreview">${logoHTML({ logo, logoCadre:cad, nom }, 96)}</div>
+    <div style="display:grid;gap:10px">
+      <label class="field"><span>Zoom <b class="num" id="cz-v">${Math.round(v("zoom",1)*100)} %</b></span><input type="range" id="cadZoom" min="0.5" max="3" step="0.05" value="${v("zoom",1)}"></label>
+      <label class="field"><span>Position horizontale</span><input type="range" id="cadX" min="-50" max="50" step="1" value="${v("x",0)}"></label>
+      <label class="field"><span>Position verticale</span><input type="range" id="cadY" min="-50" max="50" step="1" value="${v("y",0)}"></label>
+      <div class="row"><label class="field" style="width:auto"><span>Fond</span><select id="cadFond"><option value="blanc" ${v("fond","blanc") === "blanc" ? "selected" : ""}>Blanc</option><option value="transparent" ${v("fond") === "transparent" ? "selected" : ""}>Transparent</option><option value="noir" ${v("fond") === "noir" ? "selected" : ""}>Noir</option></select></label><span class="spacer"></span><button type="button" class="btn sm ghost" data-act="cadre-reset">Réinitialiser</button></div>
+    </div></div></fieldset>`;
+}
+function lireCadre(){ if (!$("#cadZoom")) return null; return { zoom:+$("#cadZoom").value, x:+$("#cadX").value, y:+$("#cadY").value, fond:$("#cadFond").value }; }
+function majCadrePreview(){
+  const c = lireCadre(), lg = $("#cadrePreview .logo.img"); if (!c || !lg) return;
+  lg.style.setProperty("--lz", c.zoom); lg.style.setProperty("--lx", c.x + "%"); lg.style.setProperty("--ly", c.y + "%");
+  lg.classList.toggle("sansfond", c.fond === "transparent"); lg.classList.toggle("noir", c.fond === "noir");
+  const zv = $("#cz-v"); if (zv) zv.textContent = Math.round(c.zoom*100) + " %";
+}
+function openNotreLogo(){
+  const r = S.reglages; if (!r.logo){ toast("Déposez d'abord un logo."); return; }
+  openDlg(dlgShell("Cadrage du logo du club", cadreEditor(r.logo, r.logoCadre, notreNom()), `<span class="spacer"></span><button type="button" class="btn" data-close>Annuler</button><button type="button" class="btn primary" data-act="save-notre-cadre">Enregistrer</button>`));
+}
+async function saveClub(id){
+  const v = k => $("#"+k).value.trim(); if (!v("cNom")){ toast("Donnez un nom au club."); return; }
+  const c = { ...(id ? S.clubs.get(id) : {}), nom:v("cNom"), ville:v("cVille"), ffbbId:v("cFfbb") };
+  if (dlg.dataset.pendingLogo){ c.logo = dlg.dataset.pendingLogo; c.logoSource = "manuel"; }
+  const cad = lireCadre(); if (cad) c.logoCadre = cad;
+  try { await write("clubs", id || uid("c"), c); closeDlg(); toast("Club enregistré"); } catch {}
+}
+const readB64 = blob => new Promise((res, rej) => { const fr = new FileReader(); fr.onload = () => res(fr.result); fr.onerror = rej; fr.readAsDataURL(blob); });
+async function uploadDataUri(uri){ const mime = (/^data:([^;,]+)/.exec(uri) || [])[1] || "image/png"; const r = await call("upload_logo", uri, mime); return r.name; }
+async function uploadLogo(file){
+  if (S.demo){ return await readB64(file); }
+  if (!canWrite){ toast("Le dépôt de logo est réservé aux éditeurs."); return null; }
+  if (file.size > 5*1024*1024){ toast("Image trop lourde (5 Mo maximum)."); return null; }
+  try { return await uploadDataUri(await readB64(file)); } catch (e){ toast(e.message || "Le logo n'a pas pu être déposé."); return null; }
+}
+/* ============ Import FFBB / CSV / sauvegarde ============ */
+function dataUriToBlob(u){ const m = /^data:([^;,]+)(;base64)?,(.*)$/s.exec(u||""); if (!m) return null; const bin = m[2] ? atob(m[3]) : decodeURIComponent(m[3]); const a = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) a[i] = bin.charCodeAt(i); return new Blob([a], { type:m[1] }); }
+let importLogHTML = "";
+function log(html){ importLogHTML = html; const el = $("#importLog"); if (el) el.innerHTML = html; }
+async function importFFBB(json){
+  if (!json || !Array.isArray(json.matchs)) throw new Error("Ce fichier ne vient pas de l'import FFBB (liste « matchs » absente).");
+  const st = { nouveaux:0, maj:0, figes:0, remplaces:[], logos:0 };
+  const nomsImport = new Map((json.equipes || []).map(e => ["e-" + e.ffbbId, e.nom]));
+  const rows = [], put = (collection, id, data, old) => { if (!old || JSON.stringify(old) !== JSON.stringify(data)) rows.push({ collection, id, data }); };
+  const remplacer = !!$("#ffbbLogosMaj")?.checked, peutRemplacer = o => !o?.logo || (remplacer && o.logoSource !== "manuel");
+  const logo = async uri => { if (!uri) return null; if (S.demo) return uri; try { const n = await uploadDataUri(uri); st.logos++; return n; } catch { return null; } };
+  if (json.clubsCtc?.length){
+    const l = json.clubsCtc.map(c => ({ ffbbId:String(c.ffbbId), nom:c.nom || "", principal:!!c.principal }));
+    if (JSON.stringify(l) !== JSON.stringify(S.reglages.ffbbClubs || [])) await saveReglages({ ffbbClubs:l });
+  }
+  if (json.club){
+    const patch = {}; if (!S.reglages.nom && json.club.nom) patch.nom = json.club.nom; if (json.club.ffbbId) patch.ffbbId = String(json.club.ffbbId);
+    if (peutRemplacer(S.reglages) && json.club.logo){ const n = await logo(json.club.logo); if (n){ patch.logo = n; patch.logoSource = "ffbb"; } }
+    if (Object.keys(patch).some(k => S.reglages[k] !== patch[k])) put("reglages", "club", { ...S.reglages, ...patch }, null);
+  }
+  const clubs = json.clubs || []; let ci = 0;
+  for (const c of clubs){
+    ci++; if (!c.ffbbId) continue; const id = "c-" + c.ffbbId, old = S.clubs.get(id);
+    const d = { ...(old||{}), ffbbId:String(c.ffbbId), nom:old?.nomManuel ? old.nom : (c.nom || old?.nom || ""), ville:old?.ville || c.ville || "" };
+    if (peutRemplacer(old) && c.logo){ log(`<span class="muted num">Logos : ${ci}/${clubs.length}</span>`); const n = await logo(c.logo); if (n){ d.logo = n; d.logoSource = "ffbb"; } }
+    put("clubs", id, d, old);
+  }
+  for (const s of json.salles || []){
+    if (!s.ffbbId) continue; const id = "s-" + s.ffbbId, old = S.salles.get(id);
+    put("salles", id, { ...(old||{}), ffbbId:String(s.ffbbId), nom:old?.nom || s.nom || "", adresse:old?.adresse || s.adresse || "", ville:old?.ville || s.ville || "", nous:old?.nous ?? !!s.nous }, old);
+  }
+  let ne = 0; const remap = new Map(), aSupprimer = [];
+  for (const e of json.equipes || []){
+    if (!e.ffbbId) continue; const id = "e-" + e.ffbbId; let old = S.equipes.get(id);
+    // Anciennes équipes créées par phase (une par inscription FFBB) : on les fusionne dans celle-ci
+    const anciens = (e.engagements || []).map(x => "e-" + x).filter(x => x !== id && S.equipes.has(x));
+    if (anciens.length){
+      const src = anciens.map(x => S.equipes.get(x)), base = src.find(x => x.visible !== false) || src[0];
+      const garde = {}; for (const k of ["coach","couleur","duree","ordre"]) { const v = src.map(x => x[k]).find(v => v !== undefined && v !== ""); if (v !== undefined) garde[k] = v; }
+      if (base.nomManuel){ garde.nom = base.nom; garde.nomManuel = true; }
+      garde.visible = src.some(x => x.visible !== false);
+      old = { ...(old || {}), ...garde };
+      for (const x of anciens){ remap.set(x, id); aSupprimer.push(x); }
+      S.equipes.set(id, old);
+    }
+    const d = { ...(old||{}), ffbbId:String(e.ffbbId), ffbbNom:e.nom, nom:old?.nomManuel ? old.nom : (e.nom || old?.nom || ""), categorie:old?.categorie || e.categorie || "", competition:e.competition || old?.competition || "" };
+    if (e.clubFfbbId != null){ d.clubId = e.principal === false ? "c-" + e.clubFfbbId : ""; d.clubNom = e.principal === false ? (e.clubNom || "") : ""; }
+    if (old?.visible === undefined) d.visible = e.principal !== false;
+    if (!old) d.couleur = ["#c2410c","#1d4ed8","#15803d","#7e22ce","#b45309","#0e7490","#be123c","#4d7c0f"][(S.equipes.size + ne++) % 8];
+    put("equipes", id, d, old);
+  }
+  for (const r of json.matchs){
+    if (!r.ffbbId) continue; const id = "m-" + r.ffbbId, old = S.matchs.get(id);
+    const inc = { date:r.date || "", heure:r.heure || "", domicile:!!r.domicile, equipeId:r.equipeFfbbId ? "e-" + r.equipeFfbbId : (old?.equipeId || ""),
+      adversaireClubId:r.adversaireFfbbId ? "c-" + r.adversaireFfbbId : "", adversaireNom:r.adversaire || "", salleId:r.salleFfbbId ? "s-" + r.salleFfbbId : "", salleNom:r.salle || "",
+      competition:r.competition || "", journee:r.journee != null ? String(r.journee) : "", scoreNous:r.scoreNous ?? "", scoreEux:r.scoreEux ?? "",
+      statut:r.statut || (r.joue ? "joue" : "prevu") };
+    if (remap.has(inc.equipeId)) inc.equipeId = remap.get(inc.equipeId);
+    const figes = new Set(old?.figes || []);
+    const d = { ...(old || { source:"ffbb" }), ffbbNumero:r.numero || old?.ffbbNumero || "", ffbb:{ ...inc } };
+    delete d.verrous;   // anciens verrous automatiques (v1.0-1.4) : abandonnés, la FFBB fait foi
+    if (old){
+      const avant = { ...old, ffbb:old.ffbb || inc };   // valeurs saisies à la main = écart avec la dernière valeur FFBB connue
+      const manuels = old.ffbb ? ecarts(avant) : FFBB_GROUPES.filter(([, fs]) => (old.verrous || []).some(f => fs.includes(f))).map(([g, fs, l]) => ({ g, fs, l }));
+      for (const e of manuels){
+        if (figes.has(e.g)){ st.figes++; continue; }
+        if (e.fs.some(f => sv(old[f]) !== sv(inc[f]))) st.remplaces.push(`${equipe(inc.equipeId)?.nom || nomsImport.get(inc.equipeId) || nomEquipe(old)} (${old.date ? dayLabel(old.date) : "?"}) : ${e.l.toLowerCase()} ${fmtFfbb(e.g, old)} → ${fmtFfbb(e.g, inc)}`);
+      }
+    }
+    for (const [g, fs] of FFBB_GROUPES) for (const f of fs){ if (old && figes.has(g)) continue; d[f] = inc[f]; }
+    if (!old){ st.nouveaux++; d.maj = new Date().toISOString(); rows.push({ collection:"matchs", id, data:d }); }
+    else if (FFBB_FIELDS.some(f => sv(old[f]) !== sv(d[f])) || JSON.stringify(old.ffbb || null) !== JSON.stringify(d.ffbb) || old.verrous){ st.maj++; d.maj = new Date().toISOString(); rows.push({ collection:"matchs", id, data:d }); }
+  }
+  // Matchs restants (saisis à la main, ou hors import) rattachés à une ancienne équipe par phase
+  const touches = new Set(rows.filter(r => r.collection === "matchs").map(r => r.id));
+  for (const [id, m] of S.matchs) if (!touches.has(id) && remap.has(m.equipeId)) rows.push({ collection:"matchs", id, data:{ ...m, equipeId:remap.get(m.equipeId) } });
+  log(`<span class="muted">Enregistrement dans la base…</span>`);
+  await writeMany(rows, (d, n) => log(`<span class="muted num">Enregistrement : ${d}/${n}</span>`));
+  for (const x of aSupprimer){ try { await remove("equipes", x); } catch {} }
+  if (aSupprimer.length) st.fusion = aSupprimer.length;
+  log(`<div class="banner" style="background:var(--dom-soft);color:var(--dom)">Import terminé : ${st.nouveaux} nouveau${st.nouveaux>1?"x":""} match${st.nouveaux>1?"s":""}, ${st.maj} mis à jour${st.figes ? `, ${st.figes} valeur${st.figes>1?"s":""} figée${st.figes>1?"s":""} conservée${st.figes>1?"s":""} (écart signalé)` : ""}${st.logos ? `, ${st.logos} logo${st.logos>1?"s":""} ajouté${st.logos>1?"s":""}` : ""}${st.fusion ? `, ${st.fusion} doublon${st.fusion>1?"s":""} d'équipe (une par phase) fusionné${st.fusion>1?"s":""}` : ""}.</div>`);
+  if (st.remplaces.length) log(importLogHTML + `<div class="banner" style="display:grid;gap:4px;margin-top:8px"><b>${st.remplaces.length} modification${st.remplaces.length>1?"s":""} manuelle${st.remplaces.length>1?"s":""} remplacée${st.remplaces.length>1?"s":""} par la valeur officielle FFBB :</b>${st.remplaces.slice(0, 40).map(x => `<span>${h(x)}</span>`).join("")}${st.remplaces.length > 40 ? `<span>… et ${st.remplaces.length - 40} autres</span>` : ""}</div>`);
+}
+async function ffbbAddClub(id, nom, role){
+  let l = ctcClubs().map(c => ({ ...c }));
+  if (role === "principal") l = [{ ffbbId:String(id), nom, principal:true }, ...l.filter(c => !c.principal && String(c.ffbbId) !== String(id))];
+  else if (!l.some(c => String(c.ffbbId) === String(id))) l.push({ ffbbId:String(id), nom, principal:false });
+  await saveReglages({ ffbbClubs:l });
+  return l;
+}
+async function ffbbRun(clubIds){
+  const box = $("#ffbbResults"); if (box) box.innerHTML = "";
+  window.ffbbProgress = msg => log(`<span class="muted">${h(msg)}</span>`);
+  log(`<span class="muted">Connexion à la FFBB…</span>`);
+  try {
+    const ids = (Array.isArray(clubIds) ? clubIds : [clubIds]).map(Number).filter(Boolean);
+    if (!ids.length) throw new Error("Choisissez d'abord votre club.");
+    // clubs déjà connus (nom + logo) : pas redemandés à la FFBB, sauf si on remplace les logos
+    const remplacer = !!$("#ffbbLogosMaj")?.checked;
+    const connus = remplacer ? [] : [...S.clubs.values()].filter(c => c.ffbbId && c.nom && (c.logo || !$("#ffbbLogos")?.checked)).map(c => +c.ffbbId).filter(Boolean);
+    const r = await call("ffbb_export", ids, !!$("#ffbbLogos")?.checked, true, connus);
+    CFG.ffbbClubId = ids[0]; await importFFBB(r.data);
+  } catch (e){ log(`<div class="banner" style="background:var(--bad-soft);color:var(--bad)">${h(e.message || "La FFBB n'a pas répondu.")}</div>`); }
+}
+async function ffbbSearch(){
+  const q = ($("#ffbbQ")?.value || "").trim(); const box = $("#ffbbResults"); if (!box) return; if (!q){ toast("Saisissez le nom ou la ville du club."); $("#ffbbQ")?.focus(); return; }
+  box.innerHTML = `<span class="muted small">Recherche…</span>`;
+  try {
+    const r = await call("ffbb_search", q);
+    const deja = new Set(ctcClubs().map(c => String(c.ffbbId))), aPrincipal = ctcClubs().some(c => c.principal);
+    box.innerHTML = r.clubs.length ? r.clubs.map(c => `<div class="card" style="cursor:default"><span class="t" style="flex:1"><b>${h(c.nom)}</b><span class="muted small">${h(c.ville)} · n° ${h(c.id)}</span></span>${deja.has(String(c.id)) ? `<span class="muted small">déjà importé</span>` : `${aPrincipal ? "" : `<button class="btn sm primary" data-ffbb-club="${h(c.id)}" data-role="principal" data-nom="${h(c.nom)}">Mon club</button>`}${aPrincipal ? `<button class="btn sm" data-ffbb-club="${h(c.id)}" data-role="ctc" data-nom="${h(c.nom)}">Ajouter à la CTC</button>` : ""}`}</div>`).join("") : `<span class="muted small">Aucun club trouvé : essayez le nom de la ville.</span>`;
+  } catch (e){ box.innerHTML = `<span class="small" style="color:var(--bad)">${h(e.message)}</span>`; }
+}
+function parseCSV(txt){
+  txt = txt.replace(/^﻿/, ""); const first = txt.split(/\r?\n/)[0] || ""; const sep = (first.match(/;/g)||[]).length >= (first.match(/,/g)||[]).length ? ";" : ",";
+  const rows = []; let row = [], cur = "", q = false;
+  for (let i = 0; i < txt.length; i++){ const c = txt[i];
+    if (q){ if (c === '"' && txt[i+1] === '"'){ cur += '"'; i++; } else if (c === '"') q = false; else cur += c; }
+    else if (c === '"') q = true; else if (c === sep){ row.push(cur); cur = ""; } else if (c === "\n" || c === "\r"){ if (c === "\r" && txt[i+1] === "\n") i++; row.push(cur); rows.push(row); row = []; cur = ""; } else cur += c; }
+  if (cur || row.length){ row.push(cur); rows.push(row); }
+  return rows.filter(r => r.some(x => x.trim()));
+}
+async function importCSV(txt){
+  const rows = parseCSV(txt); if (rows.length < 2) throw new Error("Le fichier ne contient aucune ligne de match.");
+  const hd = rows[0].map(norm), col = (...names) => hd.findIndex(x => names.some(n => x === n || x.startsWith(n)));
+  const ix = { date:col("date"), heure:col("heure","horaire"), equipe:col("equipe"), adv:col("adversaire"), lieu:col("lieu","domicile"), salle:col("salle","gymnase"), comp:col("competition","championnat"), j:col("journee") };
+  if (ix.date < 0 || ix.equipe < 0) throw new Error("Colonnes « date » et « equipe » obligatoires.");
+  let n = 0;
+  for (const r of rows.slice(1)){
+    const g = k => ix[k] >= 0 ? (r[ix[k]] || "").trim() : "";
+    let ds = g("date"); const fr = /^(\d{1,2})[\/.-](\d{1,2})[\/.-](\d{2,4})$/.exec(ds); if (fr) ds = `${fr[3].length === 2 ? "20"+fr[3] : fr[3]}-${pad(fr[2])}-${pad(fr[1])}`;
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(ds)) continue;
+    const tn = g("equipe"); let eid = [...S.equipes.entries()].find(([, e]) => norm(e.nom) === norm(tn))?.[0];
+    if (!eid){ eid = uid("e"); await write("equipes", eid, { nom:tn, couleur:["#c2410c","#1d4ed8","#15803d","#7e22ce","#b45309","#0e7490"][S.equipes.size % 6] }); }
+    const l = norm(g("lieu")), dom = !l || ["d","dom","domicile","oui","1","home"].includes(l);
+    const heure = (() => { const m = toMin(g("heure")); return m == null ? "" : `${pad(Math.floor(m/60))}:${pad(m%60)}`; })();
+    const m = { source:"manuel", verrous:[], date:ds, heure, domicile:dom, equipeId:eid, adversaireNom:g("adv"), adversaireClubId:g("adv") ? await ensureClubByName(g("adv")) : "",
+      salleNom:g("salle"), salleId:g("salle") ? await ensureSalleByName(g("salle"), dom) : "", competition:g("comp"), journee:g("j"), statut:"prevu", maj:new Date().toISOString() };
+    await write("matchs", uid("m"), m); n++; log(`<span class="muted num">${n} match${n>1?"s":""} importé${n>1?"s":""}…</span>`);
+  }
+  log(`<div class="banner" style="background:var(--dom-soft);color:var(--dom)">${n} match${n>1?"s":""} importé${n>1?"s":""} depuis le CSV.</div>`);
+}
+async function restoreBackup(json){
+  if (json?.format !== "planning-basket-sauvegarde/1") throw new Error("Ce fichier n'est pas une sauvegarde du planning.");
+  const rows = [];
+  for (const coll of ["equipes","clubs","salles","matchs"]) for (const [id, d] of Object.entries(json[coll] || {})) rows.push({ collection:coll, id, data:d });
+  if (json.reglages) rows.push({ collection:"reglages", id:"club", data:json.reglages });
+  await writeMany(rows, (d, n) => log(`<span class="muted num">Restauration : ${d}/${n}</span>`));
+  log(`<div class="banner" style="background:var(--dom-soft);color:var(--dom)">Sauvegarde restaurée (${rows.length} éléments).</div>`);
+}
+
+/* ============ Exports ============ */
+async function saveFile(filename, data){
+  if (!api){ toast("Enregistrement disponible dans l'application installée."); return; }
+  try {
+    const r = data instanceof Blob ? await call("save_file", filename, await readB64(data), true) : await call("save_file", filename, String(data), false);
+    if (r.saved) toast("Fichier enregistré : " + r.path.split(/[\\/]/).pop());
+  } catch (e){ toast(e.message || "Le fichier n'a pas pu être enregistré."); }
+}
+function csvExport(){
+  const esc = v => { v = String(v ?? ""); return /[";\n]/.test(v) ? `"${v.replace(/"/g,'""')}"` : v; };
+  const cols = [...colsOff(), ...colsDep()];
+  const head = ["date","heure","equipe","lieu","adversaire","salle","competition","journee","statut","score_nous","score_adversaire",...cols.map(c => c.l),"notes"];
+  const lines = sortMatches([...S.matchs.entries()]).map(([, m]) => [m.date, m.heure, nomEquipe(m), m.domicile ? "D" : "E", advNom(m), salleNom(m), m.competition, m.journee, STATUTS[m.statut||"prevu"]?.[0], m.scoreNous, m.scoreEux, ...cols.map(c => m[c.k]), m.notes].map(esc).join(";"));
+  saveFile(`planning-matchs-${today()}.csv`, "﻿" + [head.join(";"), ...lines].join("\r\n"));
+}
+function backupExport(){
+  const o = { format:"planning-basket-sauvegarde/1", date:new Date().toISOString(), reglages:S.reglages };
+  for (const c of ["equipes","clubs","salles","matchs"]) o[c] = Object.fromEntries(S[c]);
+  saveFile(`planning-sauvegarde-${today()}.json`, JSON.stringify(o, null, 1));
+}
+
+/* ============ Affiche (canvas) ============ */
+const imgCache = new Map();
+function loadImg(id){ if (!id) return Promise.resolve(null); if (!imgCache.has(id)) imgCache.set(id, new Promise(res => { const i = new Image(); i.crossOrigin = "anonymous"; i.onload = () => res(i); i.onerror = () => res(null); i.src = logoURL(id); })); return imgCache.get(id); }
+function cssVar(n){ return getComputedStyle(document.documentElement).getPropertyValue(n).trim(); }
+let afficheSansLogos = false;
+async function drawAffiche(){
+  const cv = $("#afCanvas"); if (!cv) return;
+  const wk = $("#afWk")?.value, lieu = $("#afLieu")?.value || "tous";
+  const ctx = cv.getContext("2d"), W = 1080;
+  const all = wk ? sortMatches([...S.matchs.entries()].filter(([, m]) => visibleM(m) && !isExempt(m) && m.date && weekendKey(m.date) === wk && (lieu === "tous" || (lieu === "dom") === !!m.domicile))) : [];
+  const groups = [["À domicile", all.filter(([, m]) => m.domicile)], ["À l'extérieur", all.filter(([, m]) => !m.domicile)]].filter(g => g[1].length);
+  const ROW = 96, H = Math.max(1350, 300 + groups.length * 110 + all.length * ROW + 110);
+  cv.width = W; cv.height = H;
+  const accent = cssVar("--accent") || "#d4561c", accentInk = cssVar("--accent-ink") || "#fff";
+  try { await document.fonts.load("700 40px 'Barlow Condensed'"); } catch {}
+  const D = "'Barlow Condensed','Arial Narrow',sans-serif", B = "'Barlow',system-ui,sans-serif";
+  ctx.fillStyle = "#f6f7f9"; ctx.fillRect(0, 0, W, H);
+  ctx.fillStyle = accent; ctx.fillRect(0, 0, W, 250);
+  // lignes de terrain décoratives
+  ctx.strokeStyle = "rgba(255,255,255,.18)"; ctx.lineWidth = 6; ctx.beginPath(); ctx.arc(W - 120, 125, 170, 0, Math.PI*2); ctx.stroke(); ctx.beginPath(); ctx.moveTo(W - 120, -10); ctx.lineTo(W - 120, 260); ctx.stroke();
+  const drawLogo = async (ent, name, x, y, s) => {
+    const img = afficheSansLogos ? null : await loadImg(ent?.logo);
+    const W2 = s; ctx.save(); ctx.beginPath(); ctx.roundRect ? ctx.roundRect(x, y, W2, s, s * .14) : ctx.rect(x, y, W2, s); ctx.closePath();
+    if (img){ const c = ent?.logoCadre || {}; if (c.fond !== "transparent"){ ctx.fillStyle = c.fond === "noir" ? "#111" : "#fff"; ctx.fill(); } ctx.clip();
+      const z = +c.zoom || 1, r = Math.min(W2 / img.width, s / img.height) * .9 * z;
+      ctx.drawImage(img, x + (W2 - img.width*r)/2 + W2 * (+c.x || 0) / 100, y + (s - img.height*r)/2 + s * (+c.y || 0) / 100, img.width*r, img.height*r); }
+    else { ctx.fillStyle = ent?.demoColor && ent.demoColor.startsWith("var") ? accent : hashColor(name); ctx.fill(); ctx.fillStyle = "#fff"; ctx.font = `700 ${Math.round(s*.4)}px ${D}`; ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.fillText(initials(name), x + W2/2, y + s/2 + 2); }
+    ctx.restore();
+  };
+  await drawLogo({ logo:S.reglages.logo, logoCadre:S.reglages.logoCadre, demoColor:S.demo ? "var" : null }, notreNom(), 50, 70, 120);
+  ctx.textAlign = "left"; ctx.textBaseline = "alphabetic"; ctx.fillStyle = accentInk;
+  ctx.font = `600 34px ${D}`; ctx.fillText(notreNom().toUpperCase(), 230, 105);
+  { const tt = wk ? weekendLabel(wk) : "Aucun week-end"; let fs = 64; ctx.font = `700 ${fs}px ${D}`; while (ctx.measureText(tt).width > W - 280 && fs > 36){ fs -= 2; ctx.font = `700 ${fs}px ${D}`; } ctx.fillText(tt, 230, 172); }
+  ctx.font = `500 26px ${B}`; ctx.fillText(lieu === "dom" ? "Matchs à domicile" : lieu === "ext" ? "Matchs à l'extérieur" : "Programme des équipes", 230, 214);
+  let y = 300;
+  const fit = (t, w) => { t = String(t); while (ctx.measureText(t).width > w && t.length > 3) t = t.slice(0, -2) + "…"; return t; };
+  if (!all.length){ ctx.fillStyle = "#5a6476"; ctx.font = `500 34px ${B}`; ctx.fillText("Aucun match ce week-end.", 60, y + 40); }
+  for (const [title, arr] of groups){
+    ctx.fillStyle = title === "À domicile" ? "#17734a" : "#2f55a4"; ctx.font = `700 40px ${D}`; ctx.fillText(title.toUpperCase(), 60, y + 40);
+    ctx.fillRect(60, y + 56, 120, 5); y += 90; let lastDay = "";
+    for (const [, m] of arr){
+      ctx.fillStyle = "#ffffff"; ctx.beginPath(); ctx.roundRect ? ctx.roundRect(50, y, W - 100, ROW - 12, 14) : ctx.rect(50, y, W - 100, ROW - 12); ctx.fill();
+      ctx.fillStyle = m.domicile ? "#17734a" : "#2f55a4"; ctx.fillRect(50, y, 8, ROW - 12);
+      const dd = parseD(m.date); ctx.fillStyle = "#141a24"; ctx.font = `700 40px ${D}`; ctx.fillText(fmtH(m.heure), 80, y + 50);
+      ctx.fillStyle = "#5a6476"; ctx.font = `600 20px ${D}`; ctx.fillText(dd ? `${JOURS_C[dd.getDay()].toUpperCase()} ${dd.getDate()}` : "", 80, y + 74);
+      ctx.fillStyle = "#141a24"; ctx.font = `700 30px ${D}`; ctx.fillText(fit(nomEquipe(m), 170), 210, y + 52);
+      const st = m.statut && m.statut !== "prevu" && m.statut !== "joue" ? STATUTS[m.statut][0].toUpperCase() : "";
+      if (st){ ctx.fillStyle = "#b3261e"; ctx.font = `700 20px ${D}`; ctx.fillText(st, 210, y + 76); }
+      await drawLogo(club(m.adversaireClubId) || { nom:advNom(m) }, advNom(m), 400, y + 14, 56);
+      ctx.fillStyle = "#141a24"; ctx.font = `600 27px ${B}`; ctx.fillText(fit((m.domicile ? "reçoit " : "chez ") + advNom(m), 560), 470, y + 44);
+      ctx.fillStyle = "#5a6476"; ctx.font = `500 21px ${B}`;
+      const extra = !m.domicile && m.rdvHeure ? ` · RDV ${fmtH(m.rdvHeure)}${m.rdvLieu ? " " + m.rdvLieu : ""}` : "";
+      ctx.fillText(fit((salleNom(m) || "Salle à préciser") + (salle(m.salleId)?.ville && !m.domicile ? ", " + salle(m.salleId).ville : "") + extra, 560), 470, y + 72);
+      y += ROW;
+    }
+    y += 20;
+  }
+  ctx.fillStyle = "#5a6476"; ctx.font = `500 20px ${B}`; ctx.textAlign = "center";
+  ctx.fillText(`${season()} · horaires susceptibles d'évoluer`, W/2, H - 40); ctx.textAlign = "left";
+}
+async function dlAffiche(){
+  const cv = $("#afCanvas"); if (!cv) return; await drawAffiche();
+  let uri; try { uri = cv.toDataURL("image/png"); } catch { afficheSansLogos = true; await drawAffiche(); uri = cv.toDataURL("image/png"); afficheSansLogos = false; toast("Logos non intégrés à l'image (accès refusé)."); }
+  const name = `affiche-${$("#afWk")?.value || "weekend"}.png`;
+  if (!api){ toast("Enregistrement disponible dans l'application installée."); return; }
+  try { const r = await call("save_file", name, uri, true); if (r.saved) toast("Image enregistrée"); } catch (e){ toast(e.message); }
+}
+
+/* ============ Exemple (en mémoire uniquement) ============ */
+function loadDemo(){
+  S.demo = true; S.equipes = new Map(); S.clubs = new Map(); S.salles = new Map(); S.matchs = new Map();
+  S.reglages = { nom:"Basket Club Exemple", couleur:"#d4561c", dureeMatch:105 };
+  const eq = [["U9 Mixte","Plateau U9","#0e7490"],["U11 M1","U11 Masculins D1","#1d4ed8"],["U11 F1","U11 Féminines D1","#be123c"],["U13 M1","U13 Masculins Région","#15803d"],["U13 F1","U13 Féminines D2","#7e22ce"],["U15 M1","U15 Masculins Région","#b45309"],["U18 F1","U18 Féminines D1","#c2410c"]];
+  eq.forEach(([n, c, col], i) => S.equipes.set("e"+i, { nom:n, categorie:c, couleur:col, ordre:i, coach:["Sophie","Karim","Julie","Marc","Inès","Thomas","Nadia"][i] }));
+  const cl = [["AS Les Tilleuls","Montreuil","#2563eb"],["Union Basket Seine","Ivry","#16a34a"],["CS Val Fleuri","Vincennes","#9333ea"],["Étoile de l'Est","Pantin","#dc2626"],["BC Rive Gauche","Issy","#0891b2"],["JS Hauts Plateaux","Meudon","#ca8a04"]];
+  cl.forEach(([n, v, c], i) => S.clubs.set("c"+i, { nom:n, ville:v, demoColor:c }));
+  S.salles.set("s0", { nom:"Gymnase Jean-Moulin", nous:true, ville:"Exemple" }); S.salles.set("s1", { nom:"Salle Pierre-de-Coubertin", nous:true, ville:"Exemple" });
+  cl.forEach(([, v], i) => S.salles.set("sx"+i, { nom:`Gymnase municipal`, ville:v }));
+  const sat = parseD(weekendKey(today()) < today() ? fmtD(addDays(parseD(weekendKey(today())), 7)) : weekendKey(today()));
+  let k = 0;
+  for (let w = -1; w < 4; w++){
+    eq.forEach((e, i) => {
+      const dom = (i + w) % 2 === 0, day = addDays(sat, 7*w + (i % 3 === 2 ? 1 : 0)), ci = (i + w + 6) % cl.length;
+      const hrs = ["10:00","11:30","13:30","14:00","15:30","16:00","17:30"];
+      const m = { equipeId:"e"+i, date:fmtD(day), heure:hrs[(i + w + 7) % 7], domicile:dom, adversaireClubId:"c"+ci, salleId:dom ? (i % 2 ? "s1" : "s0") : "sx"+ci, competition:e[1], journee:String(w + 6), statut:"prevu", source:"ffbb" };
+      if (w < 0){ m.statut = "joue"; m.scoreNous = 40 + (i*7) % 25; m.scoreEux = 35 + (i*11) % 28; }
+      if (dom){ m.arbitre1 = i % 3 ? "Léo B." : ""; m.marqueur = i % 2 ? "Parent U13" : ""; m.chrono = "Emma R."; m.respSalle = i % 4 ? "Claire D." : ""; }
+      else if (i % 2) { m.rdvHeure = `${pad(Math.max(8, toMin(m.heure)/60 - 1 | 0))}:15`; m.rdvLieu = "Parking du gymnase"; m.chauffeurs = "Famille Martin, Famille Diallo"; }
+      if (w === 1 && i === 4) m.statut = "reporte";
+      S.matchs.set("m"+(k++), m);
+    });
+  }
+  S.matchs.set("m"+(k++), { equipeId:"e3", date:fmtD(sat), heure:"14:30", domicile:true, adversaireClubId:"c5", salleId:"s0", competition:"Coupe départementale", statut:"prevu" });
+  F.periode = "avenir"; scheduleRender();
+}
+
+/* ============ Événements ============ */
+document.addEventListener("click", async e => {
+  const t = e.target.closest("button,[data-open],[data-act],label"); if (!t) return;
+  const d = t.dataset;
+  if (d.close !== undefined){ closeDlg(); return; }
+  if (d.partage){ openPartage(d.partage); return; }
+  if (d.peCopier){ const l = partagesCache.find(x => x.token === d.peCopier); if (l) copierTexte((l.champs || []).length && !(l.matchs || []).length ? messageArb(lienPartage(l.token)) : messagePartage(l.titre || "", lienPartage(l.token))); return; }
+  if (d.cle){ copierCle(d.cle); return; }
+  if (d.conflitMoi !== undefined){ resoudreConflit(+d.conflitMoi, true); return; }
+  if (d.conflitLigne !== undefined){ resoudreConflit(+d.conflitLigne, false); return; }
+  if (d.copielic){ const l = S.licencies.get(d.copielic); if (l?.licence) copierSecret(l.licence, `N° de licence ${l.licence} copié`); return; }
+  if (d.indispoDel){ const doc = S.indispos.get(d.indispoDel); if (!doc) return; const noms = (doc.noms || []).filter((_, i) => i !== +d.i);
+    try { if (noms.length) await write("indispos", d.indispoDel, { ...doc, noms }); else await remove("indispos", d.indispoDel); toast("Indisponibilité retirée"); } catch {} return; }
+  if (d.copiecode !== undefined){ copierCode(d.copiecode); return; }
+  if (d.peRevoquer){ if (t.dataset.armed){ try { await call("partage_revoquer", d.peRevoquer); toast("Lien désactivé"); chargerPartages(); } catch (e){ toast(e.message); } } else { t.dataset.armed = "1"; t.textContent = "Confirmer"; } return; }
+  if (d.licDel){ if (t.dataset.armed){ try { await remove("licencies", d.licDel); toast("Licencié retiré"); } catch {} } else { t.dataset.armed = "1"; t.textContent = "Confirmer"; } return; }
+  if (d.ffbbClub){ try { const l = await ffbbAddClub(d.ffbbClub, d.nom || "", d.role); ffbbRun(l.map(c => c.ffbbId)); } catch {} return; }
+  if (d.ctcDel){ try { await saveReglages({ ffbbClubs:ctcClubs().filter(c => String(c.ffbbId) !== d.ctcDel) }); toast("Club retiré de l'import (ses équipes restent, masquables dans Réglages)"); } catch {} return; }
+  if (d.vis){ const ids = d.vis === "*" ? sortedEquipes().filter(([, e]) => (e.clubId || "") === (d.club || "")).map(([id]) => id) : [d.vis];
+    const on = d.on === "1"; const rows = ids.filter(id => (equipe(id).visible !== false) !== on).map(id => ({ collection:"equipes", id, data:{ ...equipe(id), visible:on } }));
+    try { await writeMany(rows); } catch {} return; }
+  if (d.colmove){ const c = colsCopy(d.colmove), i = +d.i, j = i + +d.d; [c[i], c[j]] = [c[j], c[i]]; try { await saveCols(d.colmove, c); } catch {} return; }
+  if (d.coldel){ const c = colsCopy(d.coldel); c.splice(+d.i, 1); try { await saveCols(d.coldel, c); toast("Colonne retirée"); } catch {} return; }
+  if (d.coladd){ const inp = $("#newcol-" + d.coladd), l = (inp?.value || "").trim(); if (!l){ toast("Saisissez l'intitulé de la colonne."); inp?.focus(); return; }
+    const c = colsCopy(d.coladd); c.push({ k:"c_" + norm(l).replace(/ /g,"_").slice(0,24) + "_" + Math.random().toString(36).slice(2,5), l }); try { await saveCols(d.coladd, c); toast("Colonne ajoutée"); } catch {} return; }
+  if (d.colreset){ if (t.dataset.armed){ try { await saveCols(d.colreset, (d.colreset === "off" ? DEF_OFF : DEF_DEP).map(c => ({ ...c }))); toast("Colonnes rétablies"); } catch {} } else { t.dataset.armed = "1"; t.textContent = "Confirmer : rétablir"; } return; }
+  if (d.open){ openMatch(d.open); return; }
+  if (d.f){ F[d.f] = d.v; saveF(); render(); return; }
+  if (d.cal){ const [y, m] = F.mois.split("-").map(Number); const n = d.cal === "0" ? new Date() : new Date(y, m - 1 + +d.cal, 1); F.mois = `${n.getFullYear()}-${pad(n.getMonth()+1)}`; render(); return; }
+  if (d.missing){ LS.set("manquants-"+d.missing, d.v === "1"); render(); return; }
+  if (d.teamView){ F.equipe = d.teamView; F.mode = "weekend"; saveF(); location.hash = "#planning"; return; }
+  if (d.editTeam !== undefined){ openTeam(d.editTeam); return; }
+  if (d.saveTeam !== undefined){ saveTeam(d.saveTeam); return; }
+  if (d.editSalle !== undefined){ openSalle(d.editSalle); return; }
+  if (d.saveSalle !== undefined){ saveSalle(d.saveSalle); return; }
+  if (d.editClub !== undefined && t.tagName === "BUTTON"){ openClub(d.editClub); return; }
+  if (d.saveClub !== undefined){ saveClub(d.saveClub); return; }
+  if (d.saveMatch !== undefined){ saveMatch(d.saveMatch); return; }
+  if (d.unlock){ const m = S.matchs.get(d.unlock); if (!m) return;
+    const n = { ...m, figes:[] }; delete n.verrous; if (m.ffbb) for (const f of FFBB_FIELDS) n[f] = m.ffbb[f];
+    try { await write("matchs", d.unlock, n); closeDlg(); toast(m.ffbb ? "Valeurs FFBB rétablies" : "Le prochain import reprendra les données FFBB."); } catch {} return; }
+  if (d.delMatch){ if (t.dataset.armed){ try { await remove("matchs", d.delMatch); if (S.codes.has(d.delMatch)) { try { await remove("codes", d.delMatch); } catch {} } closeDlg(); toast("Match supprimé"); } catch { toast("Suppression impossible."); } } else { t.dataset.armed = "1"; t.textContent = "Confirmer la suppression"; } return; }
+  if (d.del){ if (t.dataset.armed){ try { await remove(d.del, d.id); closeDlg(); toast("Supprimé"); } catch { toast("Suppression impossible."); } } else { t.dataset.armed = "1"; t.textContent = "Confirmer la suppression"; } return; }
+  switch (d.act){
+    case "new-match": openMatch(""); break;
+    case "demo": appliquerRole("administrateur"); updateRO(); loadDemo(); break;
+    case "demo-off": S.demo = false; S.equipes = new Map(); S.clubs = new Map(); S.salles = new Map(); S.matchs = new Map(); S.reglages = {}; appliquerRole(session ? session.role : "administrateur"); updateRO(); if (session){ dbState = "loading"; render(); syncNow(true); } else { dbState = CFG.configured ? "login" : "setup"; render(); } break;
+    case "compte": openCompte(); break;
+    case "sync": await syncNow(true); if (!horsLigne) toast("Planning synchronisé"); closeDlg(); break;
+    case "reessayer": await syncNow(true); if (horsLigne) toast("Toujours pas de connexion internet."); break;
+    case "conflits": openConflits(); break;
+    case "abandons-ok": ABANDONS = []; sauverCache(true); majEtat(); if (CONFLITS.length) openConflits(); else closeDlg(); break;
+    case "logout": { const nF = FILE.length; if (nF && !t.dataset.armed){ t.dataset.armed = "1"; t.textContent = `${nF} modification(s) non envoyée(s) seront perdues : confirmer`; break; } }
+      try { await api.logout(); } catch {} try { await api.cache_clear(); } catch {} FILE = []; CONFLITS = []; ABANDONS = []; horsLigne = false; session = null; closeDlg(); dbState = "login"; appliquerRole("administrateur"); updateRO(); for (const c of ["equipes","clubs","salles","matchs","codes","licencies","indispos"]) S[c] = new Map(); S.reglages = {}; render(); break;
+    case "setup": closeDlg(); session = null; dbState = "setup"; render(); break;
+    case "pw": { const v = $("#newPw")?.value || ""; try { await call("change_password", v); toast("Mot de passe modifié"); $("#newPw").value = ""; } catch (e){ toast(e.message); } break; }
+    case "ffbb-search": ffbbSearch(); break;
+    case "partage-creer": creerPartage(t.dataset.mid); break;
+    case "partage-arb": openPartageArb(); break;
+    case "partage-arb-creer": creerPartageArb(); break;
+    case "pdf-off": if (!api){ toast("Export PDF disponible dans l'application installée."); break; } openPdfOff(); break;
+    case "pdf-off-go": pdfOff(); break;
+    case "pe-copier-msg": copierTexte($("#peMsg").value); break;
+    case "pe-config": copierTexte(configJson()); break;
+    case "pe-whatsapp": try { await call("ouvrir_url", "https://wa.me/?text=" + encodeURIComponent($("#peMsg").value)); } catch (e){ toast(e.message); } break;
+    case "pe-ouvrir": try { await call("ouvrir_url", $("#peResultat").dataset.lien); } catch (e){ toast(e.message); } break;
+    case "code-voir": { const c = $("#mCode"); if (c){ c.type = c.type === "password" ? "text" : "password"; t.textContent = c.type === "password" ? "Afficher" : "Masquer"; } break; }
+    case "lic-new": openLicNew(); break;
+    case "lic-save": { const v = k => $("#"+k).value.trim(); if (!v("lNom")){ toast("Saisissez au moins le nom."); break; }
+      const lic = v("lLic").toUpperCase().replace(/\s+/g, ""), id = lic ? "l-" + lic.replace(/[^A-Z0-9]/g, "") : uid("lm");
+      try { await write("licencies", id, { nom:v("lNom"), prenom:v("lPrenom"), licence:lic, categorie:v("lCat"), roles:S.licencies.get(id)?.roles || [] }); closeDlg(); toast("Licencié ajouté"); } catch {} break; }
+    case "cadre-notre": openNotreLogo(); break;
+    case "save-notre-cadre": { const c = lireCadre(); try { await saveReglages({ logoCadre:c }); closeDlg(); toast("Cadrage enregistré"); } catch {} break; }
+    case "cadre-reset": $("#cadZoom").value = 1; $("#cadX").value = 0; $("#cadY").value = 0; $("#cadFond").value = "blanc"; majCadrePreview(); break;
+    case "ffbb-maj": ffbbRun(ctcClubs().map(c => c.ffbbId)); break;
+    case "dl-csv": csvExport(); break;
+    case "dl-backup": backupExport(); break;
+    case "dl-affiche": dlAffiche(); break;
+  }
+});
+let qT;
+document.addEventListener("input", e => {
+  const t = e.target;
+  if (t.dataset?.ffbbField){ const w = $("#ffbbWarn"); if (w) w.hidden = false; }
+  if (["cadZoom","cadX","cadY"].includes(t.id)){ majCadrePreview(); return; }
+  if (t.id === "fQ"){ F.q = t.value; clearTimeout(qT); qT = setTimeout(() => { const pos = t.selectionStart; render(); const n = $("#fQ"); if (n){ n.focus(); n.setSelectionRange(pos, pos); } }, 200); }
+  if (t.id === "qLic"){ LS.set("qlic", t.value); clearTimeout(qT); qT = setTimeout(() => { const pos = t.selectionStart; render(); const n = $("#qLic"); if (n){ n.focus(); n.setSelectionRange(pos, pos); } }, 200); }
+  if (t.id === "qClub"){ LS.set("qclub", t.value); clearTimeout(qT); qT = setTimeout(() => { const pos = t.selectionStart; render(); const n = $("#qClub"); if (n){ n.focus(); n.setSelectionRange(pos, pos); } }, 200); }
+});
+document.addEventListener("change", async e => {
+  const t = e.target;
+  if (t.dataset.fsel){ F[t.dataset.fsel] = t.value; saveF(); render(); return; }
+  if (t.dataset?.ffbbField){ const w = $("#ffbbWarn"); if (w) w.hidden = false; }
+  if (t.id === "rPage"){ const v = t.value.trim(); if (/^https:\/\//.test(v)){ try { await saveReglages({ pagePartage:v }); toast("Adresse enregistrée"); } catch {} } else toast("L'adresse doit commencer par https://"); return; }
+  if (t.id === "cadFond"){ majCadrePreview(); return; }
+  if (t.dataset.licle){ const id = t.dataset.licle, v = t.value.trim(); if (v === (S.licencies.get(id)?.cle || "")) return;
+    try { await write("licencies", id, { cle:v }, true); toast(v ? "Clé enregistrée" : "Clé retirée"); } catch {} return; }
+  if (t.dataset.lic && t.closest("dialog")) majCleBtn(t);
+  if (t.dataset.code){ const id = t.dataset.code, v = t.value.trim(); if (v === (S.codes.get(id)?.code || "")) return;
+    try { if (v) await write("codes", id, { code:v, maj:new Date().toISOString() }); else await remove("codes", id); toast("Code enregistré"); } catch {} return; }
+  if (t.id === "fSalleJour"){ F.salleJour = t.value; render(); return; }
+  if (t.id === "afWk" || t.id === "afLieu"){ drawAffiche(); return; }
+  if (t.dataset.col){ const c = colsCopy(t.dataset.col), i = +t.dataset.i, pr = t.dataset.prop;
+    c[i][pr] = pr === "req" || pr === "stack" || pr === "arb" || pr === "lic" ? t.checked : t.value.trim() || c[i][pr];
+    if (pr === "stack") c.forEach(x => { if (x.stack === undefined) x.stack = false; }); if (pr === "type" && t.value === "text") delete c[i].type;
+    try { await saveCols(t.dataset.col, c); } catch {} return; }
+  if (t.dataset.visbox){ const id = t.dataset.visbox; try { await write("equipes", id, { visible:t.checked }, true); } catch {} return; }
+  if (t.dataset.duree){ const v = t.value === "" ? "" : Math.max(30, Math.min(240, +t.value)); try { await write("equipes", t.dataset.duree, { duree:v }, true); toast("Durée enregistrée"); } catch {} return; }
+  if (t.id === "dureeMatch"){ const v = +t.value; if (v >= 30){ try { await saveReglages({ dureeMatch:v }); } catch {} } return; }
+  if (t.dataset.inlineField){
+    const id = t.dataset.id, k = t.dataset.inlineField, v = t.value.trim();
+    if ((S.matchs.get(id)?.[k] || "") === v) return;
+    try { await write("matchs", id, { [k]:v, maj:new Date().toISOString() }, true); t.classList.toggle("miss", !v && t.dataset.req === "1"); } catch {}
+    return;
+  }
+  if (t.type === "file" && t.files?.[0]){
+    const f = t.files[0]; t.value = "";
+    try {
+      if (t.id === "upJson"){ log(`<span class="muted">Lecture du fichier…</span>`); await importFFBB(JSON.parse(await f.text())); }
+      else if (t.id === "upLic"){ await importLicencies(f); }
+      else if (t.id === "upCsv"){ log(`<span class="muted">Lecture du fichier…</span>`); await importCSV(await f.text()); }
+      else if (t.id === "upBackup"){ log(`<span class="muted">Lecture de la sauvegarde…</span>`); await restoreBackup(JSON.parse(await f.text())); }
+      else if (t.id === "upOurLogo"){ const id = await uploadLogo(f); if (id){ await saveReglages({ logo:id, logoSource:"manuel" }); toast("Logo du club mis à jour"); } }
+      else if (t.id === "clubLogo"){ const id = await uploadLogo(f); if (id){ dlg.dataset.pendingLogo = id; if ($("#cadZoom")){ $("#cadZoom").value = 1; $("#cadX").value = 0; $("#cadY").value = 0; } $("#clubLogoInfo").textContent = "Logo prêt : enregistrez pour l'appliquer."; const lg = dlg.querySelector(".logo"); if (lg) lg.outerHTML = logoHTML({ nom:"x", logo:id }, 64); } }
+    } catch (err){ if (t.id === "upLic"){ licLog(`<div class="banner" style="background:var(--bad-soft);color:var(--bad)">${h(err?.message || "Fichier illisible.")}</div>`); return; } log(`<div class="banner" style="background:var(--bad-soft);color:var(--bad)">${h(err?.message || "Fichier illisible.")}</div>`); if (!$("#importLog")) toast(err?.message || "Fichier illisible."); }
+  }
+});
+document.addEventListener("keydown", e => { if (e.key === "Enter" && e.target.id === "ffbbQ"){ e.preventDefault(); ffbbSearch(); } });
+document.addEventListener("submit", async e => {
+  if (e.target.id === "formSetup"){ e.preventDefault(); const msg = $("#setupMsg"); msg.textContent = "Vérification…";
+    const r = await api.set_config($("#cfgUrl").value, $("#cfgKey").value);
+    if (r.ok){ CFG = (await api.get_config()); logoBase = r.logoBase; dbState = "login"; render(); } else { msg.style.color = "var(--bad)"; msg.textContent = r.error || "Connexion impossible."; } return; }
+  if (e.target.id === "formLogin"){ e.preventDefault(); const msg = $("#loginMsg"); msg.textContent = "Connexion…"; msg.style.color = "";
+    const r = await api.login($("#lgEmail").value, $("#lgPw").value, $("#lgRemember").checked);
+    if (r.ok){ CFG.email = r.email; await afterLogin(r); } else { msg.style.color = "var(--bad)"; msg.textContent = /invalid/i.test(r.error || "") ? "E-mail ou mot de passe incorrect." : (r.error || "Connexion impossible."); } return; }
+  if (e.target.id === "formClub"){ e.preventDefault(); try { await saveReglages({ nom:$("#rNom").value.trim(), ffbbId:$("#rFfbb").value.trim(), couleur:$("#rCouleur").value }); toast("Réglages du club enregistrés"); } catch {} }
+});
+window.addEventListener("hashchange", render);
+
+/* ============ Version navigateur / téléphone (PWA) : accès direct à Supabase ============
+   L'application PC passe par Python (window.pywebview.api) ; dans un navigateur, cet objet offre les mêmes
+   fonctions (mêmes réponses { ok, … }) en appelant Supabase directement. */
+const WEB = location.protocol === "https:" || /[?&]web=1\b/.test(location.search);
+const VERSION_WEB = "1.15.0";
+function creerApiWeb(){
+  const ls = { get(k){ try { return localStorage.getItem("fb:" + k); } catch { return null; } },
+               set(k, v){ try { v == null ? localStorage.removeItem("fb:" + k) : localStorage.setItem("fb:" + k, v); } catch {} } };
+  let base = "", key = "", jeton = null, refresh = null, expire = 0, user = null;
+  const OFF = { ok:false, offline:true, error:"Pas de connexion internet." };
+  const KO = async r => { let m = r.statusText || ("Erreur " + r.status); try { const j = await r.json(); m = j.error_description || j.msg || j.message || j.error || m; } catch {} return { ok:false, error:String(m), status:r.status }; };
+  const entetes = (auth, extra) => { const h = { apikey:key, "Content-Type":"application/json", ...(extra || {}) };
+    if (auth && jeton) h.Authorization = "Bearer " + jeton; else if (key.startsWith("eyJ")) h.Authorization = "Bearer " + key; return h; };
+  function poser(j){ jeton = j.access_token; refresh = j.refresh_token || refresh; expire = Date.now() + (j.expires_in || 3600) * 1000; user = j.user || user; if (ls.get("refresh")) ls.set("refresh", refresh); }
+  async function rafraichir(tok){
+    const t = tok || refresh; if (!t) return { ok:false, error:"Session expirée", status:401 };
+    let r; try { r = await fetch(base + "/auth/v1/token?grant_type=refresh_token", { method:"POST", headers:entetes(false), body:JSON.stringify({ refresh_token:t }) }); } catch { return OFF; }
+    if (!r.ok){ jeton = refresh = null; return await KO(r); }
+    poser(await r.json()); return { ok:true };
+  }
+  /* requête authentifiée : renvoie { r } ou une réponse d'erreur { ok:false, … } */
+  async function http(chemin, opt = {}){
+    if (refresh && Date.now() > expire - 60000){ const x = await rafraichir(); if (!x.ok) return x; }
+    try { return { r: await fetch(base + chemin, { ...opt, headers:entetes(true, opt.headers) }) }; } catch { return OFF; }
+  }
+  async function json(chemin, opt){ const x = await http(chemin, opt); if (!x.r) return x; if (!x.r.ok) return await KO(x.r); const t = await x.r.text(); return { ok:true, data:t ? JSON.parse(t) : null }; }
+  async function role(){
+    if (!user?.id) return "lecteur";
+    const x = await json(`/rest/v1/membres?select=role&user_id=eq.${encodeURIComponent(user.id)}`);
+    return x.ok && x.data?.[0]?.role || "lecteur";
+  }
+  async function session(memoriser){
+    ls.set("refresh", memoriser ? refresh : null); ls.set("email", user?.email || ls.get("email"));
+    return { ok:true, email:user?.email || "", role:await role(), logoBase:base + "/storage/v1/object/public/logos/" };
+  }
+  function fichier(nom, contenu, b64){
+    let blob;
+    if (contenu instanceof Blob) blob = contenu;
+    else if (b64){ const s = atob(String(contenu).split(",").pop()), a = new Uint8Array(s.length); for (let i = 0; i < s.length; i++) a[i] = s.charCodeAt(i);
+      const mime = (/^data:([^;,]+)/.exec(contenu) || [])[1] || (nom.endsWith(".png") ? "image/png" : nom.endsWith(".pdf") ? "application/pdf" : "application/octet-stream"); blob = new Blob([a], { type:mime }); }
+    else blob = new Blob([contenu], { type:nom.endsWith(".csv") ? "text/csv" : nom.endsWith(".json") ? "application/json" : "text/plain" });
+    return new File([blob], nom, { type:blob.type });
+  }
+  const api = {
+    async init(){
+      base = ls.get("base") || ""; key = ls.get("key") || "";
+      if (!base || !key){ try { const c = await (await fetch("../config.json", { cache:"no-cache" })).json(); if (c.ref) base = `https://${c.ref}.supabase.co`; key = c.key || ""; } catch {} }
+    },
+    async get_config(){ return { ok:true, url:base, key, email:ls.get("email") || "", remember:!!ls.get("refresh"), configured:!!(base && key), logoBase:base ? base + "/storage/v1/object/public/logos/" : "", version:VERSION_WEB + " (web)", web:true }; },
+    async set_config(url, k){ url = String(url || "").trim().replace(/\/+$/, ""); k = String(k || "").trim();
+      if (!/^https:\/\//.test(url) || !k) return { ok:false, error:"Adresse (https://…supabase.co) et clé publique obligatoires." };
+      base = url; key = k; ls.set("base", url); ls.set("key", k); ls.set("refresh", null); ls.set("cache", null); return { ok:true, logoBase:base + "/storage/v1/object/public/logos/" }; },
+    async login(email, pw, memoriser = true){
+      let r; try { r = await fetch(base + "/auth/v1/token?grant_type=password", { method:"POST", headers:entetes(false), body:JSON.stringify({ email:String(email).trim(), password:pw }) }); } catch { return OFF; }
+      if (!r.ok) return await KO(r); poser(await r.json()); return await session(memoriser);
+    },
+    async resume(){ const t = ls.get("refresh"); if (!t || !base) return { ok:true, resumed:false };
+      const x = await rafraichir(t); if (x.offline) return x; if (!x.ok){ ls.set("refresh", null); return { ok:true, resumed:false }; }
+      return { ...(await session(true)), resumed:true }; },
+    async logout(){ try { if (jeton) await fetch(base + "/auth/v1/logout", { method:"POST", headers:entetes(true) }); } catch {} jeton = refresh = null; user = null; ls.set("refresh", null); return { ok:true }; },
+    async change_password(pw){ if (String(pw || "").length < 8) return { ok:false, error:"8 caractères minimum." }; const x = await json("/auth/v1/user", { method:"PUT", body:JSON.stringify({ password:pw }) }); return x.ok ? { ok:true } : x; },
+    async fetch(since){
+      const rows = []; let offset = 0;
+      for (;;){
+        const q = new URLSearchParams({ select:"collection,id,data,deleted,updated_at", order:"updated_at.asc,collection.asc,id.asc", limit:"1000", offset:String(offset) });
+        if (since) q.set("updated_at", "gt." + since);
+        const x = await json("/rest/v1/documents?" + q); if (!x.ok) return x;
+        rows.push(...x.data); if (x.data.length < 1000) return { ok:true, rows }; offset += 1000;
+      }
+    },
+    async upsert(lignes){
+      for (let i = 0; i < lignes.length; i += 200){
+        const x = await json("/rest/v1/documents?on_conflict=collection,id", { method:"POST", headers:{ Prefer:"resolution=merge-duplicates,return=minimal" },
+          body:JSON.stringify(lignes.slice(i, i + 200).map(r => ({ collection:r.collection, id:r.id, data:r.data, deleted:false }))) });
+        if (!x.ok) return x;
+      }
+      return { ok:true };
+    },
+    async merge(c, id, patch){ const x = await json("/rest/v1/rpc/fusionner_document", { method:"POST", body:JSON.stringify({ p_collection:c, p_id:id, p_patch:patch }) }); return x.ok ? { ok:true } : x; },
+    async delete(c, id){ const x = await json(`/rest/v1/documents?collection=eq.${encodeURIComponent(c)}&id=eq.${encodeURIComponent(id)}`, { method:"PATCH", headers:{ Prefer:"return=minimal" }, body:JSON.stringify({ deleted:true, data:{} }) }); return x.ok ? { ok:true } : x; },
+    async upload_logo(uri, mime){
+      const f = fichier("logo", uri, true); if (f.size > 5e6) return { ok:false, error:"Image trop lourde (5 Mo maximum)." };
+      const ext = { "image/png":"png", "image/jpeg":"jpg", "image/webp":"webp", "image/svg+xml":"svg", "image/gif":"gif" }[mime] || "png";
+      const nom = (crypto.randomUUID ? crypto.randomUUID().replace(/-/g, "") : Date.now().toString(36)) + "." + ext;
+      const x = await http("/storage/v1/object/logos/" + nom, { method:"POST", headers:{ "Content-Type":mime || "image/png", "x-upsert":"true", "cache-control":"31536000" }, body:f });
+      if (!x.r) return x; if (!x.r.ok) return await KO(x.r); return { ok:true, name:nom };
+    },
+    async partages(){ const x = await json("/rest/v1/partages?select=*&order=cree_le.desc"); return x.ok ? { ok:true, liens:x.data } : x; },
+    async partage_creer(row){ const ok = {}; for (const k of ["token","titre","equipes","matchs","champs","expire_le"]) if (k in row) ok[k] = row[k];
+      const x = await json("/rest/v1/partages", { method:"POST", headers:{ Prefer:"return=representation" }, body:JSON.stringify(ok) }); return x.ok ? { ok:true, lien:x.data?.[0] } : x; },
+    async partage_revoquer(t){ const x = await json(`/rest/v1/partages?token=eq.${encodeURIComponent(t)}`, { method:"PATCH", headers:{ Prefer:"return=minimal" }, body:JSON.stringify({ actif:false }) }); return x.ok ? { ok:true } : x; },
+    async ouvrir_url(u){ if (!/^(https:|whatsapp:)/.test(u)) return { ok:false, error:"Adresse refusée." }; window.open(u, "_blank", "noopener"); return { ok:true }; },
+    async cache_save(t){ ls.set("cache", t); return { ok:true }; },
+    async cache_load(){ return { ok:true, text:ls.get("cache") || "" }; },
+    async cache_clear(){ ls.set("cache", null); return { ok:true }; },
+    /* fichiers : partage du téléphone si possible (WhatsApp, Drive…), sinon téléchargement */
+    async save_file(nom, contenu, b64){
+      const f = fichier(nom, contenu, b64);
+      try { if (navigator.canShare?.({ files:[f] })){ await navigator.share({ files:[f], title:nom }); return { ok:true, saved:true, path:nom }; } }
+      catch (e){ if (e?.name === "AbortError") return { ok:true, saved:false }; }
+      const a = document.createElement("a"); a.href = URL.createObjectURL(f); a.download = nom; document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 4000);
+      return { ok:true, saved:true, path:nom };
+    },
+    async lire_tableur(){ return { ok:false, error:"Les fichiers Excel s'importent depuis l'application PC. Sur téléphone, enregistrez-les d'abord en CSV." }; },
+    async ffbb_search(){ return { ok:false, error:"L'import FFBB se fait depuis l'application PC." }; },
+    async ffbb_export(){ return { ok:false, error:"L'import FFBB se fait depuis l'application PC." }; },
+    async pdf_officiels(){ return { ok:false, error:"web" }; },
+  };
+  return api;
+}
+
+/* Impression (version web) : la feuille des officiels s'imprime ou s'enregistre en PDF depuis le navigateur */
+function imprimerOfficiels(d){
+  let z = document.getElementById("printZone"); if (!z){ z = document.createElement("div"); z.id = "printZone"; document.body.appendChild(z); }
+  const logo = S.reglages.logo ? logoURL(S.reglages.logo) : "logo-club.png";
+  z.innerHTML = d.jours.map(j => `<section class="pz-page"><header><img src="${h(logo)}" alt=""><div><small>${h(d.club.toUpperCase())}</small><h1>${h(d.titre)} · ${h(j.label)}</h1><p>${j.matchs.length} match${j.matchs.length > 1 ? "s" : ""} à domicile · ${h(d.sousTitre || "")}</p></div></header>
+    <table><thead><tr><th>Heure</th><th>Match</th>${d.colonnes.map(c => `<th>${h(c.titre)}</th>`).join("")}</tr></thead><tbody>
+    ${j.matchs.map(m => `<tr><td class="pz-h">${h(m.heure)}</td><td>${h(m.equipe)}<br>reçoit ${h(m.adversaire)}${m.salle ? `<br><span class="pz-m">${h(m.salle)}</span>` : ""}</td>
+      ${m.roles.map(cel => `<td>${cel.map(v => v.valeur ? h(v.valeur) : v.requis ? `<span class="pz-a">${cel.length > 1 ? h(v.libelle) + " : " : ""}à pourvoir</span>` : "—").join("<br>")}</td>`).join("")}</tr>`).join("")}
+    </tbody></table><footer>${h(d.club)} · édité le ${new Date().toLocaleString("fr-FR", { dateStyle:"short", timeStyle:"short" })}</footer></section>`).join("");
+  document.body.classList.add("impression");
+  const fin = () => { document.body.classList.remove("impression"); window.removeEventListener("afterprint", fin); };
+  window.addEventListener("afterprint", fin);
+  setTimeout(() => { window.print(); setTimeout(fin, 1500); }, 300);
+}
+
+/* ============ Démarrage ============ */
+async function boot(){
+  applyTheme();
+  if (WEB){ api = creerApiWeb(); await api.init(); enregistrerPWA(); }
+  else { if (!window.pywebview?.api){ dbState = "setup"; CFG = {}; render(); return; }   // ouverture hors application
+    api = window.pywebview.api; }
+  const c = await api.get_config(); CFG = c.ok ? c : {}; logoBase = CFG.logoBase || "";
+  if (!CFG.configured){ dbState = "setup"; render(); return; }
+  if (CFG.remember){ dbState = "loading"; render(); const r = await api.resume();
+    if (r.ok && r.resumed){ await afterLogin(r); return; }
+    if (r.offline){ if (await demarrerHorsLigne()) return; dbState = "login"; render(); toast("Pas de connexion internet, et aucune donnée enregistrée sur ce PC."); return; } }
+  dbState = "login"; render();
+}
+let booted = false;
+const start = () => { if (booted) return; booted = true; boot(); };
+window.addEventListener("pywebviewready", start);
+if (WEB) start();
+function enregistrerPWA(){
+  document.body.classList.add("web");
+  if ("serviceWorker" in navigator && location.protocol === "https:") navigator.serviceWorker.register("sw.js").catch(() => {});
+}
+setTimeout(() => { if (!booted && window.pywebview?.api) start(); }, 400);
+setTimeout(() => { if (!booted) start(); }, 2500);
+</script>
+</body></html>
